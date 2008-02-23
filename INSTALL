@@ -1,0 +1,476 @@
+   [1]<- Previous [2]-> Next [3]Contents
+
+   [4]Prospect Harbor Pt. Light, Prospect Harbor, Maine, 1998-06-14
+
+Installation instructions for supported platforms
+
+  Assumptions
+
+   These installation instructions assume that you are building from
+   sources obtained from [5]http://www.flaterco.com/xtide/files.html.
+   However, some users may be able to shortcut this process:  XTide has
+   been included in [6]Fedora and [7]Debian, and a Windows native binary
+   for the command-line client is available under [8]contrib files.
+   (Thanks to the relevant package maintainers.)
+
+   These instructions also assume that you are building XTide version
+   2.9.  Previous versions of XTide were not packaged with [9]GNU
+   automake, so the installation process was not as standardized.  In
+   addition, they statically linked with an included version of libtcd
+   instead of using a shared libtcd that was installed separately.  For
+   these reasons and others it is advisable that you upgrade to XTide 2.9.
+
+  Dependencies
+
+   In addition to the minimal set of X11 libraries that pretty much
+   everyone has, you need the following libraries:
+
+     * [10]libXpm 3.4 or newer compatible version
+     * [11]libpng version 0.96 or newer compatible version
+     * [12]zlib (a.k.a. libz) version 1.0.4 or newer compatible version
+     * [13]libtcd version 2.2 or newer compatible version
+
+   XTide 2.9 will link with [14]libdstr (version 20080124 or compatible)
+   if it is found on the system, but installing it is completely
+   optional.  If it is not present, XTide will link statically with a
+   bundled copy of Dstr.
+
+   tide and xttpd can be compiled in the absence of X11 libraries and
+   libXpm.  However, you still need the other stuff.
+
+  Downloading
+
+   Mandatory:  You need the XTide source code distribution, available in
+   bzipped tar format at
+   [15]http://www.flaterco.com/xtide/files.html#xtide.
+
+   Mandatory:  You need at least one harmonics file.  Harmonics files
+   contain the data that are required for XTide to predict tides for
+   different locations.  Canonical harmonics files and information on
+   getting others is provided at
+   [16]http://www.flaterco.com/xtide/files.html#harmonicsfiles.
+
+   Optional:  If you want to enable XTide to draw coastlines on the map,
+   you will also have to download the World Vector Shoreline (WVS) files,
+   which are available in bzipped tar format at
+   [17]http://www.flaterco.com/xtide/files.html#WVS.
+
+   WVS is optional because the minimum recommended hardware (166 MHz
+   Pentium PC) takes 16 seconds to draw shorelines for a hemisphere of the
+   globe.  A 3.2 GHz P4 takes less than 1 second.
+
+  Installing a harmonics file
+
+   First you need to decompress it.  You can use the command-line tool
+   [18]bzip2 as shown below, or you can use [19]7-Zip or any other
+   archiver that supports the bzip2 format.
+
+bzip2 -d harmonics-dwf-YYYYMMDD-free.tcd.bz2
+
+   Then move the uncompressed TCD file to a permanent location, e.g.,
+   /usr/local/share/xtide, and make it world readable:
+
+mkdir /usr/local/share/xtide
+chmod 755 /usr/local/share/xtide
+chmod 644 harmonics-dwf-YYYYMMDD-free.tcd
+mv harmonics-dwf-YYYYMMDD-free.tcd /usr/local/share/xtide
+
+  Installing the World Vector Shoreline files (optional)
+
+    1. Create a directory to contain the WVS files.
+    2. Change your current working directory to that directory.
+    3. Unpack the tar file in that directory.
+
+   Under Linux and any other system with GNU tar:
+
+tar xvjf wvs.tar.bz2
+
+   Elsewhere:
+
+bzip2 -dc wvs.tar.bz2 | tar xvf -
+
+  Unpacking the sources
+
+   Under Linux and any other system with GNU tar:
+
+tar xvjf xtide-2.xyz.tar.bz2
+
+   Elsewhere:
+
+bzip2 -dc xtide-2.xyz.tar.bz2 | tar xvf -
+
+  Configuring
+
+    I.  Specify the location of the harmonics file(s)
+
+   There are two ways to do this.
+
+    1. The first way is by setting the environment variable HFILE_PATH.
+
+export HFILE_PATH=/usr/local/share/xtide/harmonics.tcd
+
+       In the event that you have more than one harmonics file that you
+       wish to use simultaneously, list them separated by colons.
+
+export HFILE_PATH=/usr/local/share/xtide/harmonics-free.tcd:/usr/local/share/xti
+de/harmonics-nonfree.tcd
+
+       Alternately, make sure that they are by themselves in a special
+       directory and specify that directory as the value of HFILE_PATH.
+       If an element of HFILE_PATH is a directory, XTide will attempt to
+       load every file in that directory (so be sure that they are all
+       harmonics files!)
+       If you are installing as root, then it is recommended that you add
+       this definition to a system-wide script such as /etc/profile if you
+       have one.
+    2. The other way is by creating the file /etc/xtide.conf.  The
+       environment variable, if set, takes precedence over the config
+       file.
+       If a configuration file is used, the first line should consist of
+       the value that would be assigned to HFILE_PATH:
+/usr/local/share/xtide/harmonics-free.tcd:/usr/local/share/xtide/harmonics-nonfr
+ee.tcd
+
+    II.  Specify the location of the World Vector Shoreline files (optional)
+
+   Either set the environment variable WVS_DIR to the name of that
+   directory or supply the directory name as the second line of the
+   configuration file /etc/xtide.conf.
+
+    III.  Run the configure script
+
+bash-3.1$ ./configure
+
+   XTide 2.9 is packaged with the popular and portable [20]GNU automake,
+   so all usual GNU tricks should work.  Help on configuration options can
+   be found in the CONFIGURE-HELP file or obtained by entering ./configure
+   --help.
+
+   The web server xttpd is not necessary to use tide or xtide, so most
+   users needn't worry about it.  However, if you plan to run it, there is
+   additional configuration at this point.
+
+   To change the user and/or group under which xttpd tries to run (the
+   defaults are nobody/nobody), provide the options --with-xttpd-user=user
+   and/or --with-xttpd-group=group to configure.  If you want to run xttpd
+   but you don't have root, you will have to set these to your own
+   username and the name of some group to which you belong.
+
+bash-3.1$ ./configure --with-xttpd-user=xttpd --with-xttpd-group==scarydæmons
+
+   You can also set the webmaster address for xttpd this way.
+
+bash-3.1$ ./configure --with-webmaster="somebody@somewehere.else"
+
+    IV.  Other optional and alternative configurables
+
+   --enable-time-workaround Work around Y2038 problem; disable time
+   zones.  See [21]Appendix A -- Historical predictions and Y2038
+   compliance.
+   --enable-gnu-attributes Use with g++ -Wall -Wextra to make warnings
+   smarter.
+   --enable-semicolon-pathsep Use ; instead of : to separate names in
+   HFILE_PATH (good idea if they begin with C:\)
+   --enable-local-files Locate xtide.conf, .xtide.xml, and
+   .disableXTidedisclaimer files in current working directory
+
+   You can change the compile-time defaults (colors, etc.) set in
+   config.hh if you so choose.  However, the easiest way to set all of
+   those things is with the [22]control panel in the interactive XTide
+   program.
+
+   The e-mail address for feedback in xttpd can also be changed by setting
+   the environment variable XTTPD_FEEDBACK, in lieu of the configure
+   option mentioned above.
+
+  Compiling
+
+bash-3.1$ make
+bash-3.1$ su
+bash-3.1# make install
+
+Special cases
+
+  Mac OS X
+
+  XTide version 2.9.5 or newer should compile cleanly and run under Mac OS
+  10.3.3 or later.
+
+  If the PNG package is installed via Fink ([23]http://fink.sourceforge.net/),
+  use CPPFLAGS="-I/sw/include" and LDFLAGS="-L/sw/lib" to find the
+  Fink-installed PNG files.
+
+  A [24]native port to OS X is also available.
+  Sun
+
+  XTide version 2.10 or newer should work.
+
+  If compiling with Sun's own compiler, use CXX="CC -fast -library=stlport4" and
+  CPPFLAGS="-I.".
+
+  Use CPPFLAGS="-I/opt/csw/include" and LDFLAGS="-R/opt/csw/lib/ -L/opt/csw/lib"
+  to find libraries from [25]Blastwave installed under /opt/csw.
+  IRIX
+
+  Some SGI machines come with a broken make program.  Use GNU make.
+  HP-UX
+
+  Long ago, a user submitted the following flags to get XTide to compile using
+  the aCC compiler under HP-UX.  If somebody still uses this platform and the
+  flags are still needed, they can be supplied to configure:
+
+bash-3.1$ CXX="aCC" CXXFLAGS="-Wc,-koenig_lookup,on +DAportable" LDFLAGS="-lPW"
+./configure
+
+   It is possible that the latest configuration scripts add all needed
+   flags automatically, but they have not been tested under HP-UX.
+
+  Don't have X11
+
+   If you don't have any version of X11 installed and just want to compile
+   xttpd or tide, generate a Makefile using ./configure and then type
+   'make xttpd' or 'make tide'.  You will probably need to install the
+   binaries by hand.
+
+  CPU-bound platform
+
+   If running on the minimum recommended hardware (166 MHz Pentium PC) it
+   is advisable to forego installing the [26]World Vector Shoreline
+   database.  If a true color display is present, graph drawing can be
+   sped up enormously by turning off anti-aliasing (see [27]settings,
+   XTide*antialias).
+
+  Cygwin
+
+  XTide can be compiled and run using [28]Cygwin, which is an emulated Unix
+  environment for Windows that is free for typical non-commercial users.  The
+  Cygwin distribution and its full license terms are available from
+  [29]http://www.cygwin.com/.
+
+  Cygwin packages are all versioned separately, so there is no baseline "Cygwin
+  version" against which to test XTide.  Testing was most recently performed
+  with XTide 2.9.2 using the collection of packages that was current as of
+  2007-03-31.
+
+  As of then, the quirks apparent after brief testing were as follows.
+
+    1. If only building certain of the programs, you must type (e.g.)
+       'make tide.exe' instead of 'make tide'.  'make tide' causes the
+       automake-generated makefile to do something silly.
+    2. Graph drawing in the interactive interface is an order of magnitude
+       slower.  The slowdown can be mitigated by turning off anti-aliasing
+       (see [30]settings, XTide*antialias).
+    3. When you drag a window around, fine-grained exposure events for any
+       overlapped windows are queued but not delivered until you drop it.
+       The resulting redraw behavior is suboptimal.
+    4. When you resize a graph window, instead of delivering one
+       ConfigureNotify event, Cygwin delivers a huge pile forming a
+       continuum between the old size and the new one.^[31]1  This is
+       worse than suboptimal as it can take a long time to resize the
+       graph that many times.  Once again, the slowdown can be mitigated
+       by turning off anti-aliasing (see [32]settings, XTide*antialias).
+
+   Cygwin used to have worse problems than that, so it is highly advisable
+   to update your installation before compiling XTide.
+
+  Visual C++ Express Edition
+
+  A native Windows binary for the command-line client tide can be built using
+  Visual C++ Express Edition (either 2005 or 2008).  However, you will still
+  need a [33]Cygwin environment to run the build process.  GCC is not required,
+  but you'll need the bash shell, GNU make, etc.
+
+  Visual C++ ignores most of the standard command-line switches that the build
+  process tries to use.  These instructions include a minimal set of workarounds
+  so that tide will compile anyway.  However, because of the basic
+  incompatibilities, you will still get a lot of warnings.
+
+  Before attempting to run configure or make, the environment variables PATH,
+  INCLUDE, and LIB must be set to cover (A) the Visual C++ environment itself
+  and (B) your installations of [34]libpng, [35]zlib and [36]libtcd native
+  Windows libraries.
+
+  To set variables for Visual C++, Visual C++ provides a batch file called
+  vsvars32.bat that can be found somewhere in the Visual C++ program folder
+  (e.g., C:\Program Files\Microsoft Visual Studio
+  9.0\Common7\Tools\vsvars32.bat).  To get these settings into the Cygwin
+  environment, follow these three steps:
+
+    1. Start a Command Prompt (Start->Accessories->Command Prompt or run
+       cmd.exe).
+    2. At the command prompt, invoke vsvars32.bat (use Search to find it
+       if necessary).
+    3. At the command prompt, invoke cygwin.bat (use Search to find it if
+       necessary).
+
+   At that point you should have a bash prompt, and Visual C++ should
+   work.  You can add the directories for your [37]libpng, [38]zlib and
+   [39]libtcd library installations using bash commands, e.g.,
+
+export LIB="${LIB};C:\\FunkyLibs\\lib"
+export INCLUDE="${INCLUDE};C:\\FunkyLibs\\include"
+
+   Having done that, run the configure script like this:
+
+bash-3.1$ ./configure CC=cl CXX=cl LD=cl CPP="cl /E" LDFLAGS="zdll.lib libpng.li
+b libtcd.lib" --enable-semicolon-pathsep --enable-local-files
+
+   Depending on how you compiled your [40]libpng, [41]zlib and [42]libtcd
+   libraries, the specific file names to be listed in LDFLAGS may be
+   different.
+
+   If you get a pop-up saying that "conftest.exe has encountered a
+   problem," keep clicking on "Don't Send" until configuration proceeds.
+   Then run 'make tide.exe'.  You will get a lot of warnings.  The
+   resulting executable might not work from the Cygwin bash prompt but it
+   should work when run from a Windows command prompt (DOS box).
+
+   In accordance with the selected configure options, the following
+   behaviors will differ from the default Unix behaviors:
+
+     * File names in the environment variable HFILE_PATH or the
+       configuration file xtide.conf should be separated by semicolons
+       instead of colons.
+     * The file xtide.conf (and any other configuration files that you
+       use) should go in the current working directory.
+
+   So for example you could put the following in an xtide.conf file in the
+   current working directory:
+
+C:\Documents and Settings\Mumble\Foo\harmonics-free.tcd;C:\Documents and Setting
+s\Mumble\Foo\harmonics-nonfree.tcd
+
+Troubleshooting
+
+Q: Trying to compile tide using Visual C++, the configure script complains that
+it can't find a library, and the following error messages appear in config.log.
+Alternately, these errors can occur when linking tide.exe.
+
+MSVCRT.lib(MSVCR80.dll) : error LNK2005: _malloc already defined in LIBCMT.lib(m
+alloc.obj)
+MSVCRT.lib(MSVCR80.dll) : error LNK2005: _free already defined in LIBCMT.lib(fre
+e.obj)
+LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; us
+e /NODEFAULTLIB:library
+conftest.exe : fatal error LNK1169: one or more multiply defined symbols found
+
+   A: These errors occur when libraries are compiled with conflicting
+   settings of the Visual C++ compiler switches /MT, /MD and /LD.  Try
+   recompiling the libraries without using any such switches.
+
+   Q: tide.exe compiles and runs with Visual C++ 2003, but non-ASCII
+   characters (degrees symbol, accented characters, etc.) are not output
+   correctly.
+
+   A: This is why Visual C++ 2003 is unsupported.  The function that is
+   needed to select a codeset other than the default MS-DOS legacy codeset
+   does not work.  Use 2005 or 2008 instead.
+
+   Q: Trying to compile XTide 2.9.4 or earlier on a Mac or Windows file
+   system, the configure script crashes immediately.
+
+   A: This is fixed in XTide 2.9.5.  XTide 2.9.4 and earlier did not
+   anticipate case-insensitive file systems..
+
+   Q: XTide compiles, but when I try to run it I get an error like
+error while loading shared libraries: libtcd.so.0: cannot open shared object fil
+e: No such file or directory
+
+   A: Somehow, g++ found the shared library but your dynamic linker
+   didn't.  To get the dynamic linker to find the library, you can just
+   add its directory to the environment variable LD_LIBRARY_PATH.  For
+   example, if you find the library in /usr/local/lib, you would add this
+   to your .bashrc (if using bash):
+export LD_LIBRARY_PATH=/usr/local/lib
+
+   Or you would add this to your .cshrc (if using csh or tcsh):
+setenv LD_LIBRARY_PATH /usr/local/lib
+
+   Q: Trying to compile XTide using Sun compilers, the following error
+   occurs:
+"/opt/SUNWspro/prod/include/CC/Cstd/./map", line 251: Error: Multiple declaratio
+n for std::map<const Dstr, Configurable, std::less<const Dstr>, std::allocator<s
+td::pair<const Dstr, Configurable>>>::insert(const std::pair<const Dstr, Configu
+rable>&).
+"BetterMap.hh", line 28:     Where: While specializing "std::map<const Dstr, Con
+figurable, std::less<const Dstr>, std::allocator<std::pair<const Dstr, Configura
+ble>>>".
+"BetterMap.hh", line 28:     Where: Specialized in BetterMap<const Dstr, Configu
+rable>.
+"Settings.hh", line 30:     Where: Specialized in non-template code.
+
+   A: This problem is resolved by the -library=stlport4 compiler switch.
+
+   Q: XTide 2.8.3 or earlier compiles, but when run the following error
+   occurs:
+X Error of failed request:  BadName (named color or font does not exist)
+  Major opcode of failed request:  45 (X_OpenFont)
+
+   A: You need to install the Schumacher fonts.  These fonts were reliably
+   present on every X11 installation until 2006, when Linux distributions
+   started breaking fonts out into lots of separate packages in accordance
+   with upstream advice.  For what it's worth, XTide 2.9 gives a more
+   helpful error message that tells you which font it could not load.
+
+   Q: When compiling XTide, I get an error involving xml-something or
+   lex.xml.c.
+
+   A: For XTide 2.9 or later, do make xmlclean and then try again.  For
+   XTide 2.8.3 or earlier, run the script do_xml.sh and then try again.
+     __________________________________________________________________
+
+   [43]<- Previous [44]-> Next [45]Contents
+
+   ^1 The Xlib Programming Manual says the ConfigureNotify event is to be
+   generated when the resize request "actually completes."  Unlike Expose
+   events, there is no mechanism for handling consecutive ConfigureNotify
+   events as a batch.  This suggests that the Cygwin interpretation is not
+   what was intended.
+
+References
+
+   1. http://www.flaterco.com/xtide/sysreq.html
+   2. http://www.flaterco.com/xtide/ports.html
+   3. http://www.flaterco.com/xtide/xtide.html#contents
+   4. http://www.flaterco.com/
+   5. http://www.flaterco.com/xtide/files.html
+   6. http://fedoraproject.org/
+   7. http://www.debian.org/
+   8. http://www.flaterco.com/xtide/files.html#contrib
+   9. http://www.gnu.org/software/automake/automake.html
+  10. ftp://ftp.x.org/contrib/libraries/
+  11. http://www.libpng.org/pub/png/libpng.html
+  12. http://www.zlib.net/
+  13. http://www.flaterco.com/xtide/files.html#libtcd
+  14. http://www.flaterco.com/util/index.html
+  15. http://www.flaterco.com/xtide/files.html#xtide
+  16. http://www.flaterco.com/xtide/files.html#harmonicsfiles
+  17. http://www.flaterco.com/xtide/files.html#WVS
+  18. http://www.bzip.org/
+  19. http://www.7-zip.org/
+  20. http://www.gnu.org/software/automake/automake.html
+  21. http://www.flaterco.com/xtide/time_t.html
+  22. http://www.flaterco.com/xtide/advanced.html#cp
+  23. http://fink.sourceforge.net/
+  24. http://www.flaterco.com/xtide/ports.html#Mac
+  25. http://www.blastwave.org/
+  26. http://www.flaterco.com/xtide/installation.html#WVS
+  27. http://www.flaterco.com/xtide/settings.html#antialias
+  28. http://www.cygwin.com/
+  29. http://www.cygwin.com/
+  30. http://www.flaterco.com/xtide/settings.html#antialias
+  31. http://www.flaterco.com/xtide/installation.html#fn1
+  32. http://www.flaterco.com/xtide/settings.html#antialias
+  33. http://www.cygwin.com/
+  34. http://www.libpng.org/pub/png/libpng.html
+  35. http://www.zlib.net/
+  36. http://www.flaterco.com/xtide/files.html#libtcd
+  37. http://www.libpng.org/pub/png/libpng.html
+  38. http://www.zlib.net/
+  39. http://www.flaterco.com/xtide/files.html#libtcd
+  40. http://www.libpng.org/pub/png/libpng.html
+  41. http://www.zlib.net/
+  42. http://www.flaterco.com/xtide/files.html#libtcd
+  43. http://www.flaterco.com/xtide/sysreq.html
+  44. http://www.flaterco.com/xtide/ports.html
+  45. http://www.flaterco.com/xtide/xtide.html#contents

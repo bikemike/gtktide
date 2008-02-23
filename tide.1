@@ -1,0 +1,243 @@
+.TH tide 1 "2008-02-05"  "XTide 2"
+.SH NAME
+tide \- Harmonic tide clock and tide predictor (command line client)
+.SH SYNOPSIS
+.B tide
+[\fB-b ``YYYY-MM-DD HH:MM''\fP]
+[\fB-cw pixels\fP]
+[\fB-dc color\fP]
+[\fB-Dc color\fP]
+[\fB-df ``format-string''\fP]
+[\fB-e ``YYYY-MM-DD HH:MM''\fP]
+[\fB-ec color\fP]
+[\fB-el y|n\fP]
+[\fB-em pSsMm\fP]
+[\fB-f c|h|i|l|p|t\fP]
+[\fB-fc color\fP]
+[\fB-fg color\fP]
+[\fB-ga aspect\fP]
+[\fB-gh pixels\fP]
+[\fB-gt y|n\fP]
+[\fB-gw pixels\fP]
+[\fB-hf ``format-string''\fP]
+[\fB-in y|n\fP]
+[\fB-l ``location name''\fP]
+[\fB-lw pixels\fP]
+[\fB-m a|b|c|C|g|k|l|m|p|r|s\fP]
+[\fB-mc color\fP]
+[\fB-Mc color\fP]
+[\fB-ml [-]N.NN(ft|m|kt)\fP]
+[\fB-nc color\fP]
+[\fB-nf y|n\fP]
+[\fB-o ``filename''\fP]
+[\fB-ph mm\fP]
+[\fB-pm mm\fP]
+[\fB-pw mm\fP]
+[\fB-s ``HH:MM''\fP]
+[\fB-tf ``format-string''\fP]
+[\fB-tl y|n\fP]
+[\fB-th characters\fP]
+[\fB-tw characters\fP]
+[\fB-u ft|m\fP]
+[\fB-v\fP]
+[\fB-z y|n\fP]
+.SH DESCRIPTION
+XTide is a package that provides tide and current predictions in a wide
+variety of formats. Graphs, text listings, and calendars can be generated,
+or a tide clock can be provided on your desktop.
+.LP
+XTide can work with X-windows, plain text terminals, or the web. This is
+accomplished with three separate programs: the interactive interface
+(\fBxtide\fP), the non-interactive or command line interface
+(\fBtide\fP), and the web interface (\fBxttpd\fP).
+.LP
+.B tide
+is the non-interactive command line client for XTide 2.
+For a complete
+discussion, please see the verbose documentation at
+.BR http://www.flaterco.com/xtide/ .
+.SH CONFIGURATION
+Unless a configuration file
+.B /etc/xtide.conf
+is supplied, you must set the environment variable
+.B HFILE_PATH
+to point to the harmonics
+files that should have been installed along with the
+.B xtide
+program.  Example:
+.RS
+export HFILE_PATH=/usr/local/share/xtide/harmonics.tcd
+.RE
+If a configuration file is used, the first line should consist of the
+colon-separated list of harmonics files (e.g. the
+.B HFILE_PATH
+line above without the "export HFILE_PATH=" part).
+The environment variable takes precedence over the configuration file.
+.LP
+Set the environment variable
+.B XTIDE_DEFAULT_LOCATION
+to the name of your favorite place if you want to skip the location-choosing
+step.
+.SH OPTIONS
+.TP
+.B -b ``YYYY-MM-DD HH:MM''
+Specify the begin (start) time for predictions using the ISO 8601
+compliant format YYYY-MM-DD HH:MM, where hours
+range from 00 to 23.  The timestamp is in the local time
+zone for the location, or in UTC if the
+.B -z
+setting is engaged.  If clock mode is selected or if no
+.B -b
+is supplied, the current time will be used.
+.TP
+.B -cw pixels
+Width for tide clocks (default 84 pixels).  Note:  Clock height is the same as graph height.
+.TP
+.B -dc color
+Daytime background color in tide graphs (default SkyBlue).
+.TP
+.B -Dc color
+Color of datum line in tide graphs (default white).
+.TP
+.B -df ``format-string''
+.BR strftime (3)
+style format string for printing dates (default %Y-%m-%d).
+.TP
+.B -e ``YYYY-MM-DD HH:MM''
+Specify the end (stop) time for predictions in banner, calendar, alt. calendar,
+medium rare, plain, raw, or stats mode.  Does not apply in graph and clock
+modes:  the effective end time for graph and clock modes is entirely determined
+by the start time
+.RB ( -b ),
+the width
+.RB ( -cw ,
+.B -gw
+or
+.BR -tw ),
+and the aspect
+.RB ( -ga ).
+The format and time zone are the same as for
+.BR -b .
+If no
+.B -e
+is supplied, the end time will be set to four days after the begin time.
+.TP
+.B -ec color
+Foreground in tide graphs during outgoing tide (default SeaGreen).
+.TP
+.B -el y|n
+Select whether or not to draw datum and middle-level lines in tide graphs
+(default n).
+.TP
+.B -em pSsMm
+Events to suppress (p = phase of moon, S = sunrise, s = sunset, M = moonrise, m
+= moonset), or x to suppress none.  E.g, to suppress all sun and moon events,
+set eventmask to the value pSsMm.
+.TP
+.B -f c|h|i|l|p|t
+Specify the output format as CSV, HTML, iCalendar, LaTeX, PNG, or text.  The default is text.
+.TP
+.B -fc color
+Foreground in tide graphs during incoming tide (default Blue).
+.TP
+.B -fg color
+Color of text and other notations (default black).
+.TP
+.B -ga aspect
+Aspect for tide graphs, clocks, and banners (default 1.0).  This
+controls not the width or height of the window but rather the relative scaling
+of the X and Y axes in the plot of the tide curve.
+.TP
+.B -gh pixels
+Height for tide graphs and clocks (default 312 pixels).
+.TP
+.B -gt y|n
+Select whether or not to label tenths of units in tide graphs
+(default n).
+.TP
+.B -gw pixels
+Width for tide graphs (default 960 pixels).
+.TP
+.B -hf ``format-string''
+.BR strftime (3)
+style format string for printing hour labels on time axis (default %l).
+.TP
+.B -in y|n
+Select whether or not to use inferred values for some constituents (default n).
+For expert use only.
+.TP
+.B -l ``location name''
+Specify a location for tide predictions.
+.TP
+.B -lw pixels
+Width for lines in tide graphs with
+.B -nf
+(default 2.5 pixels).
+.TP
+.B -m a|b|c|C|g|k|l|m|p|r|s
+Specify mode to be about, banner, calendar, alt. calendar, graph, clock, list, medium rare, plain, raw, or
+stats.  The default is plain.
+.TP
+.B -mc color
+Color of mark line in graphs (default red).
+.TP
+.B -Mc color
+Color of middle-level line in tide graphs (default yellow).
+.TP
+.B -ml [-]N.NN(ft|m|kt)
+Specify the mark level to be used in predictions.  The predictions will include
+the times when the tide level crosses the mark.  Not supported in clock
+mode.  Example usage: -ml -0.25ft
+.TP
+.B -nc color
+Nighttime background color in tide graphs (default DeepSkyBlue).
+.TP
+.B -nf y|n
+Select whether or not to draw tide graphs as line graphs
+(default n).
+.TP
+.B -o ``filename''
+Redirect output to the specified file (appends).
+.TP
+.B -ph mm
+Nominal length of paper in LaTeX output (default 420 mm).  This need not match
+your actual paper; use "Shrink oversized pages" in print options.
+.TP
+.B -pm mm
+Nominal width of top, bottom, left and right margins in LaTeX output (default
+10 mm).  Actual width will depend on print scaling.
+.TP
+.B -pw mm
+Nominal width of paper in LaTeX output (default 297 mm). This need not match your actual paper; use "Shrink oversized pages" in print options.
+.TP
+.B -s ``HH:MM''
+Specify the step interval, in hours and minutes, for raw
+or medium rare mode predictions.  The default is one hour.
+.TP
+.B -tf ``format-string''
+.BR strftime (3)
+style format string for printing times (default %l:%M %p %Z).
+.TP
+.B -tl y|n
+Select whether or not to draw depth lines on top of the tide graph
+(default n).
+.TP
+.B -th characters
+Height of ASCII graphs and clocks (default 24 characters).
+.TP
+.B -tw characters
+Width of ASCII graphs, clocks, banners, and calendars (default 79 characters).
+.TP
+.B -u ft|m
+Preferred units of length (default no preference).
+.TP
+.B -v
+Print version string and exit.
+.TP
+.B -z y|n
+Select whether or not to coerce all time zones to UTC (default n).
+.SH "SEE ALSO"
+.BR xtide (1),
+.BR xttpd (8),
+.BR http://www.flaterco.com/xtide/ .
+.sp

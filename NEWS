@@ -1,0 +1,225 @@
+   [1]<- Previous [2]Contents
+
+Icon News
+     __________________________________________________________________
+
+XTide 2.10
+
+   Get it from [3]http://www.flaterco.com/xtide/files.html#xtide.
+
+Prebuilt Windows binary
+
+   A prebuilt Windows binary for the command-line client is available for
+   downloading from [4]http://www.flaterco.com/xtide/files.html#contrib.
+   See the readme included in the zip file for important details.  Thanks
+   to Leonid Tochinski.
+
+FAQ of the Day:  "Are these predictions compliant with the new 2007 Daylight
+Savings Time rules for the U.S.?"
+
+   XTide relies on [5]the de facto standard time zone database to handle
+   Daylight Savings Time.  XTide's results will obey the new Daylight
+   Savings Time rules if and only if the version of zoneinfo installed is
+   sufficiently new.  See [6]System Requirements.
+
+Harmgen 3
+
+   Harmgen, the package for deriving harmonic constants from water level
+   observations, has been renovated and its integration with Congen and
+   Harmbase has been improved.  Get it at
+   [7]http://www.flaterco.com/xtide/files.html#experts.
+
+Congen 1.6
+
+   Congen 1.6 is a complete rewrite of the package for generating the
+   speeds, equilibrium arguments, and node factors of tidal constituents.
+   In addition to the classic command-line interface provided by Congen
+   1.5, it now includes a C++ library that can be used directly by other
+   programs.  Get it at
+   [8]http://www.flaterco.com/xtide/files.html#experts.
+
+tideEditor 1.4.1
+
+   Changes in tideEditor 1.4 include the ability to view and edit all
+   fields in the latest harmonics file and improved error checking.  Get
+   it at [9]http://www.flaterco.com/xtide/files.html#extras.
+
+PHP Special Interest Group
+
+   A number of people have expressed interest in getting XTide to work
+   through PHP.  Thus far I have just been introducing them to each other
+   through e-mail and waiting for cool things to happen.  There is now a
+   [10]WordPress plugin by Mir Rodríguez.
+
+Native OS X port
+
+   Lee Ann Rucker has done a nativized port to OS X using [11]Cocoa and
+   Objective-C.  It is available at
+   [12]http://homepage.mac.com/lrucker/XTide/.
+
+Mailing list
+
+   There is a manually-maintained, announce-only mailing list to which I
+   send notices of each update to XTide or the harmonics data.  You can
+   request to join by e-mailing me at dave@flaterco.com.
+     __________________________________________________________________
+
+Roadmap to future development
+
+  Things worth fixing / TO-DO list
+
+   Data maintenance
+
+   There is great demand for a centrally maintained, royalty-free,
+   authoritative database of all tide stations in a standardized format.
+   Such a database does not exist.
+
+   It takes a great deal of effort on my part to scrape tide data from
+   interactive web sites and transform them into a coherent database for
+   use with XTide.  That database is then used by numerous projects, both
+   open source and commercial, because it is the closest thing to a
+   centrally maintained, royalty-free, authoritative database that is
+   available.  I do not get paid to do this.  It's a huge amount of work
+   with a steep learning curve attached, and nobody else will do it.
+
+   As onerous as it is just to update the data for the U.S. once a year, I
+   cannot afford to import and maintain any data whose quality is suspect
+   or where no reliable source for future updates exists; nor can I afford
+   to engage in activism to try to persuade tide authorities to release
+   more data.
+
+   All of the tools that I use are open source and available for download
+   from [13]http://www.flaterco.com/xtide/files.html.  The Tide
+   Constituent Database (TCD) library is even public domain.  I hope that
+   someday tide authorities will use it to produce TCD files that they
+   distribute directly, and then my role in this will become redundant.
+     * Either get more German data or regenerate using the old data and
+       fewer constituents
+     * Maybe create a currents database using legacy constants + new
+       offsets, for lack of something better
+     * Maybe scrape the simplified harmonic constants from the Norwegian
+       Hydrographic Service--acceptable use TBD
+     * Lots of inactive Canadian stations might be usable
+     * Determine status of non-U.S. locations appearing on NOS web site
+
+   xtide
+     * Investigate [14]pcal interoperability problem.  Why won't it import
+       iCal?
+     * Unbundle Dstr?
+
+   libtcd
+     * Things not to do unless/until a major revision is needed.
+          + Get rid of internal state; fix inability to have more than one
+            database open
+          + Remove gratuitous complexity in the encoding of speeds,
+            equilibrium arguments, and node factors; make speeds 32-bit
+            unsigned with no offset
+          + Possibly permit node factors to be specified for intervals
+            shorter than 1 year and/or support apps that use libcongen to
+            generate the node factors themselves
+
+   tcd-utils
+     * Fix truncation of notes by build_tide_db
+     * build_tide_db recognize datumkind field name
+
+   Harmbase2
+     * Clean up the code.
+     * Do one-time hack to convert renamings-USA from prefix form to
+       postfix form for sub stations that get a "context" (may be rendered
+       moot by additional web site changes)
+
+  Suggested XTide features and other etceteras
+
+   The following features have been suggested or thought about but did not
+   make the cut.  They could be added in future revisions if there were
+   sufficient demand.
+     * There ought to be a way to specify relative dates and times in the
+       -b and -e fields.  Need an applicable standard; ISO 8601 doesn't
+       support it.  Simon Bridger requested -b and -e to recognize
+       relative specifications like yesterday, today, tomorrow, mon-sun,
+       sat+7 for next Saturday, "tomorrow 23:59" or "sat 00:00".  Others
+       want to specify a small relative offset from the current time for
+       -b to change the position of the + mark in graphs.
+     * Factor out a standalone component library as a favor to developers
+       who want to reuse XTide's engine but reinvent its wheels.
+     * Generate maps for xttpd navigation and general illustration,
+       include in LaTeX form.
+     * Graeme Rae suggested a line for the current time in text listings,
+       like "2001-03-19 11:50 AM PST 0.10 feet Falling."  This is doable
+       now that the tide events code has been refactored, but it's not
+       clear what the settings and behaviors should be to handle the "now"
+       event consistently across all modes.  Graphs and clocks have their
+       own ways of showing the "now," and it would be inappropriate to
+       include "now" in a calendar.
+     * Simon Bridger requested support for multiple -b and -e
+       specifications.
+     * Tim Cera notes that Options might be more user-friendly if it was
+       split into separate menus for "Create new windows" versus "Change
+       settings."
+     * Add a real color chooser in control panel.  This would come free
+       with Qt or similar if we ever migrated from Athena widgets.
+     * Constituent inference was patched in via libtcd and maybe could
+       have been integrated better.  In theory, you might want to control
+       it on a station-by-station basis like preferred units.  But, maybe
+       it's a non-issue.  Nobody has complained yet.
+     * Generate node factors and equilibrium arguments more than once a
+       year.  Most tide prediction software does it monthly or at least
+       does it for the middle of your prediction interval.  But the legacy
+       of SP98 is to do it yearly.
+     * Add support for Doodson style tide prediction as used by Foreman's
+       IOS package.  At this time there seems to be little benefit to be
+       gained by doing this:
+         1. No new Doodson data appear to be forthcoming.
+         2. Most Doodson constituents are approximated fairly well by
+            Congen now.
+         3. The ones that aren't approximated well are those that are
+            drastically affected by latitude.  To support
+            latitude-dependent constituents, node factors and equilibrium
+            arguments would have to be generated internally to XTide,
+            which would be a significant architectural change.
+         4. Casement opined that the latitude-dependent method is bogus
+            anyway because tides are generated some place in mid-ocean
+            with a different latitude.
+         5. If you want IOS, you can find it at
+            [15]http://www.pac.dfo-mpo.gc.ca/sci/osap/projects/tidpack/tid
+            pack_e.htm.
+     * Simon Bridger requested a "weekend warrior" option that lists
+       today, tomorrow, Saturday, Sunday, and next Saturday.
+     * Jef Poskanzer long ago asked for a global plot of tide levels to
+       show how the tides move around.  This could be done by color-coding
+       the dots on the globe, but it would (1) require a true-color
+       display and (2) be too slow to be the default behavior of the
+       globe.  Hans Bot has seconded this request.
+     * David Mendez suggests plotting the derivative of the tide as well
+       as the tide--this is useful for predicting swells.
+     * Diane Grant wants to be able to execute a query like 'find all days
+       in this year having a flood greater than 3.0 between 8 AM and 9
+       AM.'
+     * xttpd: Change mapping of locations to URLs so that links won't
+       break when harmonics files are changed.  Thought about this but
+       could not find a better solution than putting the entire location
+       name in the URL, which is already semi-supported by the exact query
+       feature.
+     __________________________________________________________________
+
+   [16]<- Previous [17]Contents
+
+References
+
+   1. http://www.flaterco.com/xtide/changelog.html
+   2. http://www.flaterco.com/xtide/xtide.html#contents
+   3. http://www.flaterco.com/xtide/files.html#xtide
+   4. http://www.flaterco.com/xtide/files.html#contrib
+   5. ftp://elsie.nci.nih.gov/pub/
+   6. http://www.flaterco.com/xtide/sysreq.html#TZsysreq
+   7. http://www.flaterco.com/xtide/files.html#experts
+   8. http://www.flaterco.com/xtide/files.html#experts
+   9. http://www.flaterco.com/xtide/files.html#extras
+  10. http://www.almanaqueazul.org/?p=132
+  11. http://developer.apple.com/cocoa/
+  12. http://homepage.mac.com/lrucker/XTide/
+  13. http://www.flaterco.com/xtide/files.html
+  14. http://pcal.sourceforge.net/
+  15. http://www.pac.dfo-mpo.gc.ca/sci/osap/projects/tidpack/tidpack_e.htm
+  16. http://www.flaterco.com/xtide/changelog.html
+  17. http://www.flaterco.com/xtide/xtide.html#contents

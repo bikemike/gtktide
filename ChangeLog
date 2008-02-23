@@ -1,0 +1,1047 @@
+   [1]<- Previous [2]-> Next [3]Contents
+
+Icon Change log
+
+  XTide 2.10 (2008-02-05)
+
+   (Code rot) Updated bundled Dstr to version 20080124.
+
+   (Documentation) Fixed man page nits and related nits in documentation
+   of command-line switches.
+
+  XTide 2.10 RC1 (2008-01-18)
+
+   (Feature) Enabled clock mode output (mode k) in PNG and text forms from
+   the command-line client.  This feature was requested to enable the
+   construction of embedded clock widgets.  (Suggested by Mark Crossley)
+
+   (Portability) Fixed incorrect resolution of utsname on Suns.  Bug
+   report credit:  C. Jeffery Small.
+
+   (Code rot) Set the magic environment variable to opt out of the
+   backward-incompatible changes made by the Composite extension to X11.
+   Said changes were causing XTide windows to appear transparent in
+   foo-foo windowing environments.  Bug report credit:  Alan E. Davis.
+
+   (Documentation) Beefed up the man pages and made minor clarifications
+   to the descriptions of some settings.
+
+  XTide 2.9.5 (2007-12-10)
+
+   (Portability) Renamed CONFIGURE to CONFIGURE-HELP to eliminate conflict
+   on case-insensitive file systems.  Bug report credit:  Anton Pitts
+   (Mac), Leonid Tochinski (Windows).
+
+   (Portability) With help from Leonid Tochinski, made command-line client
+   portable to Visual C++ Express Edition.
+     * Tolerate missing header files and functions.
+     * Use nonstandard header files if present.
+     * Possibly use #pragma message instead of #warning.
+     * #define _USE_MATH_DEFINES.
+     * Specified binary mode for some files used by tide.exe.
+     * Tolerate MS-DOS line discipline in xtide.conf.
+     * Some Windows-specific code for low-level file operations.
+     * In source files needed for tide.exe, renamed every variable named
+       _timezone to timezoneLocalVar to eliminate conflict with global
+       _timezone variable.
+     * Fixed a yyerror signature mismatch between xml_l.ll and xml_y.yy.
+     * Added --enable-semicolon-pathsep and --enable-local-files.
+     * Possibly use %I strftime format instead of %l.
+     * Only if compiling under Visual C++, set locale to "English_United
+       States.1252".
+     * Added a workaround for a time function bug in Visual C++ 2005 that
+       causes the program to crash.
+
+  XTide 2.9.4 (2007-09-03)
+
+   (Bug) Fixed incorrect encoding of characters in "About This Station"
+   window when ambient locale is UTF-8.
+
+   (Legal) Relicensed under GPLv3.
+
+   (Code rot) configure.ac:  Removed -DYY_NO_UNPUT, which flex no longer
+   respects as of version 2.5.33.
+
+   (Cleanup) Build scripts:  Removed AM_MAINTAINER_MODE and made 'make
+   dist-bzip2' do the right thing.
+
+  XTide 2.9.3 (2007-04-17)
+
+   (Bug) Fixed dropped lines in flat map drawing (improved version of
+   recent fix to tideEditor).
+
+   (Portability) Moved #define __STDC_FORMAT_MACROS to the top of
+   common.hh to avoid a surprise that occurs when inttypes.h gets included
+   by a previous include file.
+
+   (Cleanup) Removed an unused #define from common.hh.
+
+  XTide 2.9.2 (2007-03-31)
+
+   (Bug) In MLLW estimation, possibly include final LLW value depending on
+   endTime.
+
+   (Usability) Set year limits for time control dialogs based on the
+   actual type of time_t rather than the conservative interval common to
+   all platforms.
+
+   (Usability) Made xttpd report version of XTide; removed obsolete
+   discussion of PNG image format.
+
+   (Usability) Catch missing STL at configure time (reportedly not found
+   without CPPFLAGS under Mac OS X 10.4.9).
+
+   (Portability) Fixed several nonportable casts in xxGlobe.cc (32-bit int
+   assumption); replaced constant 8 with CHAR_BIT in two places.
+
+   (Cleanup) A few more cleanups.
+     * Cleaned up config.hh.  Most #defines were changed to typed
+       constants.  Definitions not related to settings were moved to more
+       appropriate locations.
+     * Removed a few includes from common.hh.
+     * Cleaned up format strings in Colors.cc.
+     * Moved wvsrtv declaration to xxGlobal.hh.
+
+  XTide 2.9.1 (2007-03-14)
+
+   (Bug) Changed estimation of MLLW in stats mode to use tidal day as
+   specified by [4]Special Publication NOS CO-OPS 1 and 2 instead of solar
+   day as was done in XTide 2.9.  It makes about 1 inch of difference.
+
+   (Compliance) GNU attributes are now enabled only if one configures with
+   --enable-gnu-attributes.  They are only useful if compiling with extra
+   warnings anyway.
+
+   (Usability) Compilers that cannot build a particular test case
+   correctly (notably GCC 3.3.x) are now rejected by configure with an
+   explanation that it is time to upgrade.
+
+  XTide 2.9 (2007-02-27)
+
+   (Portability) Cygwin doesn't have llround yet.  Made do without it.
+
+   (Compliance) Rearranged some callbacks to avoid the need for objects in
+   the X11 interface to delete themselves (considered harmful) or their
+   containers (presumably worse).
+
+   (Cleanup) A few more cleanups.
+     * Quashed default copy constructors and assignment operators on
+       classes that did not want to have them.
+     * Changed an unsigned char to a bool.
+     * Made factories static members of the classes that they produce,
+       thereby eliminating another friend function.
+     * Tagged return values as const.  See coding conventions.
+     * Cleaned up the templates.
+     * Got rid of redundant declarations of friend functions.
+     * Replaced a magic number with a constant.
+
+  XTide 2.9 RC3 (2007-02-18)
+
+   (Bug) Stopped time warps on subordinate stations from crashing
+   calendars, AGAIN.  The parent class of the class that was junked and
+   rewritten the last time around has been junked and rewritten.  Calendar
+   mode has been reimplemented in an entirely different style at great
+   expense and at the last minute.
+
+   (Code rot) Fixed configure to detect and use libdstr if it is present.
+
+   (Optimization) Inlined some functions and methods to make the
+   highfalutin' C++ code in XTide 2.9 run as fast as the crufty C code in
+   XTide 2.8.3.  See commentary in ConstituentSet::tideDerivative for
+   details.
+
+   (Usability) Decreased scrolling fraction for flat map from 95% to 25%
+   (consistent with globe).  Made station dots bigger in globe (more like
+   map).  Made tide graphs scroll by half the width of the graph instead
+   of by 1 day.
+
+   (Docs) Added makefile rule to generate README, ChangeLog, NEWS,
+   AUTHORS, and README-QUICK from the web site.
+
+  XTide 2.9 RC2 (2007-02-11)
+
+   (Feature/Cleanup) Added estimation of MLLW to stats mode; made stats
+   mode text from RC1 more consistent.
+
+   (Usability) Improved error reporting to distinguish absence of an
+   HFILE_PATH from absence of harmonics files.
+
+   (Cleanup) The C++ standard does in fact promise that the elements of a
+   std::vector are stored contiguously--purged MemoryChunk and replaced
+   its uses with vectors.
+
+   (Nits) Fixed a violation of coding conventions; improved commentary in
+   several places.
+
+  XTide 2.9 RC1 (2007-02-01)
+
+   (Cleanup) 100% code review and major cleanup.
+     * Performed numerous major and minor refactorings.
+     * Replaced crufty data structures with standard templates.
+     * Updated obsolescent coding practices.
+     * Corrected improper inheritance relationships.
+     * Purged dead, duplicate, and wasteful code.
+     * Purged gratuitous complexity and excessive generality.
+     * Purged speed hack that was incompatible with the design (hoping
+       that nobody will be impacted by the performance hit).
+     * Improved integrity checking.
+     * Created enums for cryptic parameters.
+     * Used const where applicable.
+     * Defined coding conventions.
+
+   (Code rot) Installed canonical Dstr.  Only visible impact should be
+   different sorting of location names containing æ, ð, ø, ß, or
+   fractions.
+
+   (Code rot) Caused xttpd to serve /favicon.ico as expected by most
+   browsers nowadays.
+
+   (Code rot) Added support for the newfangled NET_WM protocol to set
+   window titles.  This resolves an issue with window titles getting
+   mangled when the ambient locale is UTF-8.  Bug report credit:  Lutz
+   Mändle.
+
+   (Code rot) Converted to automake; updated configure.ac per autoconf
+   2.60.
+
+   (Code rot) Removed Cygwin and Irix workarounds for incomplete strftime
+   implementations.  Cygwin's was fixed.
+
+   (Optimization) Added a pixel cache to mitigate a performance bottleneck
+   that occurs while anti-aliasing X graphs in xxPixmapGraph.
+
+   (Feature) Added LaTeX format for calendar mode and associated settings
+   pagewidth, pageheight, and pagemargin.
+
+   (Feature) Added eventmask setting, deprecated nosunmoon setting.
+   Eventmask allows moon phase, sunrise, sunset, moonrise, and moonset to
+   be enabled or disabled individually, whereas nosunmoon only allowed
+   them to be enabled or disabled as a group.
+
+   (Feature) Text and HTML form output are now generated in UTF-8 if that
+   is the ambient codeset.  Names specified in UTF-8 on the command line
+   are now understood.
+
+   (Feature) Text mode graphs and banners now show darkness (night time)
+   in a manner analogous to PNG or X graphs.
+
+   (Feature) Mouse wheel (mapped as Button4 and Button5) now works to
+   scroll text prediction windows, location lists, the control panel, and
+   the disclaimer.
+
+   (Feature) Added mean of maxima and minima and CPU time to stats mode.
+
+   (Feature) Made raw and medium rare modes accessible from xtide command
+   line.
+
+   (Feature) Added setting to control whether tide graphs are anti-aliased
+   on true color displays.
+
+   (Feature) Added setting to label tenths of units in graphs.
+
+   (Feature) Resolved timestamp collision problem in graphs.  (1) Shift
+   location of timestamps to avoid collisions when feasible.  (2) Improved
+   logic for deciding when to use short descriptions.
+
+   (Usability) When failing to load a font, report the name of the font
+   that failed to load.  When swapping the begin and end times, inform the
+   user.
+
+   (Portability) Used new autoconf feature to obtain integer types with
+   known sizes.  Used these types for TIME_WORKAROUND and Interval.
+
+   (Compliance) Spun off libtcd into a separate tarball.
+
+   (Security) Allow configuring user and group for xttpd and make xttpd
+   exit if the uid/gid can't be set thusly.
+
+   (Robustness) Trap and report overflow when adding an Interval to a
+   Timestamp.
+
+   (Robustness) Generalized Timestamp::tm2utc and eliminated the last use
+   of libc's mktime.  Bad or out-of-range timestamps provided by the user
+   should now reliably yield a relevant error message.
+
+   (Robustness) Fixed bug in handling (ignoring) of ill-formed x-fields in
+   TCD.
+
+   (Robustness) Modified Graph to be more compatible with variable-width
+   fonts, similar to patch contributed by Lee Ann Rucker.
+
+   (Bug) Fixed assertion failure on changing preferred units of length in
+   control panel while a current station is displayed.
+
+   (Bug) Fixed xttpd neglecting to demangle %XX syntax in exact query
+   URLs.  Bug report credit:  James K. Lowden.
+
+   (Bug) Fixed window manager closing prediction windows while subordinate
+   dialogs were open, which caused XTide to fail to terminate when the
+   last window was closed.
+
+   (Bug) Fixed failure to apply color settings to control panel scrollbar.
+
+   (Bugs) Fixed identification of day transitions in rare and pathological
+   cases.  Prior to the fix, it was possible for calendar to put events in
+   the wrong day around the time of daylight savings time changes in
+   exotic locales having interesting DST rules.
+
+   (Bug) Fixed invalid simplification of current sub stations having slack
+   offsets and level adds that resulted in the slack offsets being ignored
+   for affected stations.
+
+   (Bug) Stopped time warps on subordinate current stations from crashing
+   calendars, again.  The offending logic is that responsible for figuring
+   how many columns are needed.  Said logic has broken repeatedly.  This
+   time I basically gave up on the whole approach and dumbed it down to
+   something that hopefully won't break.
+
+   (Bug) Fixed incorrect rounding of negative coordinates in graphs.  You
+   could notice this in text graphs or banners where column zero sometimes
+   collected an hour tick that should already have scrolled off into
+   negativeland.
+
+   (Nit) Remove assertion failure if knots^2 are specified as the units in
+   a sub station record (levelAdd units are always knots anyway).
+
+   (Nits) Minor changes in calendar mode text.
+
+   (Nit) Fixed off-by-one-second bug in end boundary setting for xttpd
+   calendars.
+
+   (Nit) Handle whitespace in HFILE_PATH correctly.
+
+   (Nit) In disclaimer, replaced facetious reference to continental drift
+   with serious references to subsidence and uplift.
+
+   (Nit) Fixed shifting horizontal alignment of text in X11 text modes.
+
+   (Nit) When applying settings in the control panel, preserve marklevels
+   and steps but reset aspect and units to defaults or whatever the new
+   settings specify.
+
+   (Nit) Instead of always barfing when HOME is unset, barf only when the
+   need arises to write something to the home directory, and do without
+   any config files that would normally be there.
+
+   (Nit) Once again changed descriptive text related to the middle-level
+   line to avoid confusion.
+
+   (Nit) Fixed unintended scrolling of X11 text modes triggered in rare
+   circumstances.
+
+   (Nit) Fixed X11 graphs and clocks momentarily flashing to background
+   color when updating.
+
+   (Nit) Minor changes to short descriptions for tide events.
+
+   (Bug) Added documented bug for xttpd logging timezone shift.
+
+   (Bug) Added documented bug for control panel vanishing buttons problem.
+
+   (Cosmetic) Installed new default icon.
+
+  XTide 2.8.3 (2006-03-13)
+
+   (Code rot) Made to compile under gcc 4.1.0.
+
+  XTide 2.8.2 (2005-01-06)
+
+   (Bug) Fixed "oops" in xxMap.cc that caused station dots to be
+   suppressed on part of the flat map.  Bug report credit:  Jan Depner.
+
+  XTide 2.8.1 (2004-12-28)
+
+   (Portability) Updated configure to look in lib64 for X libs, for
+   compatibility with x86_64.  Bug report credit:  Fedora / David Kaplan.
+
+  XTide 2.8 (2004-12-10)
+
+   (Nit) More intelligent selection of WVS resolutions in globe.  The
+   wvs3.dat file now gets use.
+
+   (Nit) Don't suppress single-point islands on globe.
+
+  XTide 2.8 BETA 2 (2004-11-17)
+
+   (Bug) Tried to fix crash on startup on multi-head displays (no feedback
+   on whether it worked).
+
+   (Oversight) Omitted slack offsets are now handled by interpolating from
+   known tide events rather than defaulting to reasonable values.  This
+   should have been done as part of the changes in Beta 1.
+
+  XTide 2.8 BETA 1 (2004-10-26)
+
+   (Bug) The subordinate station interpolation algorithm derived from work
+   by Jean-Pierre LaPointe started misbehaving when it met the new NOS
+   data imported 2004-09.  See Exhibit A.
+
+   Exhibit A: discontinuous tide graph for Hana, Maui
+
+   That algorithm was designed around architectural problems that were
+   eliminated in the refactorings of XTide 2.7.  Replaced it with a
+   simpler and better algorithm that solves the above problem and three
+   others (appearing below).
+
+   The old algorithm had the interesting property that, as a side effect
+   of fudging around pathological cases that broke the algorithm, the
+   graph would often be a more likely model of reality than unquestioning
+   loyalty to the corrections would give.  No such luck with the new
+   algorithm, unless I deliberately break it in the same way.  See Exhibit
+   B, where an application of offsets to the insignificant higher low and
+   lower high tides at Kahului has produced a significant (and probably
+   mythical) tide cycle at Hana on the evening of 2004-09-08.
+
+   Exhibit B: Kahului
+   Exhibit B: Hana ho
+
+   (Bug) Fixed this longstanding documented bug:
+
+     Tide graphs and raw output for subordinate current stations won't
+     mesh with the predicted times of slack water, Min Flood or Min Ebb.
+     Cause of bug: The interpolation algorithm used to produce tide
+     graphs for subordinate stations doesn't do slack water.  Workaround:
+     none.
+
+   (Bug) Removed this longstanding documented limitation:
+
+     The raw tide levels for subordinate current locations whose
+     reference stations are hydraulic will do bogus things for a few
+     minutes around the time of slack water.  Hydraulic currents
+     exacerbate a minor inaccuracy that exists for all subordinate
+     stations, producing a major inaccuracy.
+
+   (Feature) Removed this longstanding documented limitation:
+
+     For most subordinate stations, you can't set a mark level.
+
+   (Bug?) Changed application of offsets for Min Flood and Min Ebb on
+   subordinate current stations to match what I think is NOS' intent.  For
+   details, see [5]http://www.flaterco.com/xtide/mincurrents.html.
+
+   (Bug) Fixed an IMPOSSIBLE_CONVERSION failure (oddly enough, from some
+   units to the same units) triggered by opening a station, converting
+   units, setting a mark level, and then opening a new window from the
+   Options menu.  Kudos to August Hahn for discovering the steps to
+   reproduce this "interesting" bug.  Added a new warning, NO_CONVERSION,
+   to flag any other occurrences of the same thing.
+
+   (Code rot) Added :America/Juneau, :America/Nome, :America/Yakutat and
+   :Pacific/Johnston to the compatibility table for platforms with
+   obsolete zoneinfo.  (Deliver me from Solaris 8!)
+
+   (Bugs & Features) Upgraded to libtcd 2.0.
+
+   (Feature) Added about mode.  (As in "About this station")
+
+   (Cleanup) Cleaned up strange coding in StationRef, HarmonicsFile, and
+   Offsets left over from the days of XML sub stations.
+
+   (Cleanup) Deleted some dead pretty-printing code in Speed, Constituent,
+   etc.; got rid of static buffers in some other pretty-printing code; got
+   rid of the Constituent class (merged into TabulatedConstituent); synced
+   Angle::normalize with fp roundoff fix and assertion from Congen; added
+   an assertion that node factors should be greater than 0 (this will
+   detect TCD files with overflow problems).
+
+   (Cleanup) Removed CFLAGS from the build process; just use CXXFLAGS.
+   Removed -DNVSUNOS from configure.in since it has no effect on libtcd.
+
+   (Cleanup) Moved libtcd accesses out of TabulatedConstituent.  Moved
+   libtcd dependencies out of HarmonicsFile.hh and changed build
+   dependencies so that only HarmonicsFile gets rebuilt when libtcd is
+   changed.
+
+   (Bug) Changed "Mean Tide Level" verbiage (formerly "Mean Sea Level") to
+   say "Mean Astronomical Tide."  The National Ocean Service (NOS) defines
+   both Mean Sea Level (MSL) and Mean Tide Level (MTL) in terms of
+   averages taken over observations.  The line drawn by XTide corresponds
+   to the mathematical mean level of the predictions, which approximates
+   both MSL and MTL, but, strictly speaking, is equivalent to neither.
+
+   (Nits) Fixed nits revealed by g++ -Wall -Wextra -pedantic.
+
+   (Bug) Fixed a logic error that could cause XTide to lock up if you
+   looked at a period of more than 24 hours with no tide events in just a
+   certain way.
+
+   (Feature) Made the globe location chooser able to zoom in closer.
+
+   (Nit) In both location choosers, quit chopping lines that are only
+   partly outside the window.
+
+  XTide 2.7.1 (2004-08-17)
+
+   (Bugs) Incorporated libtcd patch:
+
+     Version 1.13
+     David Flater
+     2004-08-15
+
+     (create_tide_db)  Write a valid end_of_file record even if someone
+     creates a database with no tide records.
+
+     (tide_db_default)  Removed a superfluous space character in table of
+     default datum types (after Lowest Astronomical Tide).
+
+   (Evil) Disabled the translation of the TCD comments field into a notes
+   field for sub stations.  It was a historical oddity that sub stations
+   had notes but not comments and reference stations had comments but not
+   notes, and this was no excuse for overloading the comments field.
+   Harmbase2 now wants to put stuff in the comments field for sub
+   stations, with the result that XTide 2.7 blabbers the comments to every
+   user as a cryptic and strangely verbose note.  Notes will come back if
+   and when the TCD format is extended to include a separate notes field.
+
+  XTide 2.7 (2004-08-09)
+
+   (Nit) Fixed xttpd to include the file name as well as the revision date
+   when citing what version of which harmonics file it's using.
+
+  XTide 2.7 BETA 2 (2004-07-01)
+
+   (Portability) Ignore all hidden files (dot files) in a directory
+   indicated by HFILE_PATH, not just "." and "..".  (OS X creates hidden
+   files everywhere.)
+
+   (Portability) Run ranlib on libtcd.a; ignore error if ranlib isn't
+   there.  (OS X needs ranlib.)
+
+   (Portability) Changed normalcflags and normalcxxflags in configure.in
+   to say -O instead of -O2.  (Forte doesn't grok -O2.)
+
+   (Portability) When looking for X11 in configure, recognize libXaw.dll.a
+   (per latest Cygwin) as well as libXaw.so and libXaw.a.
+
+   (Nit) Removed unnecessary escaping and quoting in a warning message in
+   configure.in.
+
+  XTide 2.7 BETA 1 (2004-04-20)
+
+   (Code rot) libtcd 1.12:  Deleted #include <malloc.h> from tcd.h.
+
+   (Nit) Replaced inappropriate radiation symbols in error windows with
+   standard international symbols for general panic and impending doom.
+
+   (Feature) Added iCalendar format and option to get iCalendar output
+   from xttpd.
+
+   (Feature) Added cbuttons setting to control whether clock windows
+   appear with buttons by default.
+
+   (Feature) Allowed setting location of lone window with -geometry.
+
+   (Feature) Allowed specifying an IP address for xttpd.
+
+   (Feature) Added CSV format to various modes.
+
+   (Portability) Added test for Fedora RPM build environment in
+   configure.  If found, usual and customary compiler and linker switches
+   are suppressed and RPM_OPT_FLAGS are added.
+
+   (Bug) Fixed small memory leak in SubordinateStation.cc.
+
+   (Cleanup) Major refactoring of tide events handling code.
+     * Original design:  predictExactTideEvent took an "internal"
+       timestamp, scanned for tide events, returned a tide event with
+       "corrected" timestamp (incorporating subordinate station
+       corrections) and also the "uncorrected" timestamp from where
+       scanning for the next event would continue.  Complex caching logic
+       was needed to integrate actual tide-tide events with sun and moon
+       events and still return events in the right order... usually.
+       However, sub station corrections could still cause events to be
+       returned out of order, and there was no way to fix it.
+     * What happened:  Eventually every relevant module except xxTextMode
+       grew its own crufty layer of linked list bashing to post-process
+       the predictions, really get them in the right order, and meet other
+       requirements unique to each module.  Circa version 2.6 the cruft
+       achieved critical mass and began to obstruct routine maintenance.
+     * The fix:  Linked list bashing made redundant by
+       TideEventsOrganizer, which inherits standard multimap template.
+       predictExactTideEvent replaced by predictExactTideEvents, which
+       takes a range of timestamps and populates an organizer with exactly
+       the events falling within that range (no "internal" timestamps
+       required).  extendRange adds more events at the beginning or end of
+       an organizer to support scrolling types of behaviors, albeit in
+       chunks instead of single events.
+     * Outcome:  Cruft greatly reduced.  Several previously unfixable bugs
+       were fixed (see below).  -b and -e ranges now mean something.
+       Scrolling performance in xxTextMode slightly degraded.
+
+   (Bug) Fixed this longstanding documented bug:
+
+     There are edge effects at the start and end of an interval chosen
+     for subordinate station predictions.  Some events that are inside of
+     the interval may be excluded, and vice-versa.  Cause of bug: While
+     the interval is faithfully scanned for the reference station, tide
+     events can jump in or out of the chosen interval after the offsets
+     are applied.  Workaround: Leave a margin around the interval of
+     interest that is larger than the offsets of the subordinate station
+     (a few hours should suffice).
+
+   (Bug) Fixed this longstanding documented bug:
+
+     If two events (e.g., high tide and full moon) happen to coincide
+     very closely, within 1 minute of each other, and you reverse the
+     direction of the scrolling in the interactive plain mode window at a
+     point where only one of the events is visible, you might be able to
+     make the other one disappear.  Cause of bug: accuracy of
+     predictions, precision of timestamps.  Workaround: don't do that.
+
+   (Bug) Fixed this longstanding documented bug:
+
+     In the interactive plain mode window only, tide events can be listed
+     out of order for subordinate stations.  Cause of bug: design
+     conflict.  Efficient scrolling is incompatible with keeping the list
+     sorted.  Workaround: save the predictions to a file and they will be
+     sorted.
+
+   (Nit) -b and -e ranges now mean specifically "all t such that b <= t <
+   e."
+
+   (Nit) Expunged anachronistic references to "text mode" (it's plain
+   mode).
+
+   (Bug) Fixed an assertion failure "tidecol < numcol" that could occur
+   generating calendars for pathological subordinate current stations
+   where applying the offsets causes slack-before-flood to happen after
+   max flood or analogous for ebb.
+
+   (Nits) Added casts and changed data types to get rid of
+   unsigned-to-signed comparison warnings.
+
+   (Cleanup) Major refactoring of settings management code to fix this
+   longstanding "known design problem:"
+
+     Nine source files must be changed to add one new setting
+     (Settings.hh, Settings.cc in 3 places, config.hh, UserDefaults.cc,
+     xxApplicationDefaults.cc, ConfigDefaults.cc, CommandLineSettings.cc
+     in 2 places, xxXTideRoot.cc in 4 places, and xxXTideRoot.hh).
+
+  XTide 2.6.4 (2003-11-16)
+
+   (Bugs) Incorporated libtcd patch:
+
+     Version 1.11
+     David Flater
+     2003-11-16
+
+     (create_tide_db)  Fixed horrible bug:  offsets for speeds,
+     equilibrium args, and node factors were sign-reversed with respect
+     to their usage in read_tide_db_header and write_tide_db_header,
+     resulting in possible overflows.
+
+     (read_tide_db_header)  Added handling for zero tide records, which
+     happens on new database create.
+
+     (open_tide_db)  Added check of modified flag to 2003-10-14 code.
+
+     (close_tide_db)  Deleted repeat free of tindex introduced
+     2003-10-14.  Cleared modified flag on close.
+
+  XTide 2.6.3 (2003-10-14)
+
+   (Bug) Incorporated libtcd patch:
+
+     Version 1.10
+     David Flater
+     2003-10-14
+
+     Incorporated patch from Phil Thornton that closes a memory leak and
+     improves performance on repeat calls to open_tide_db.  See
+     [6]http://www.flaterco.com/xtide/tcd_notes.html
+
+   (Nit) Added a precompiler directive to prevent code inside of assert
+   statements from being disabled by over-ambitious optimization.
+
+  XTide 2.6.2 (2003-09-05)
+
+   (Bug) Incorporated libtcd patch:
+    Version 1.09
+    Jan C. Depner
+    2003-09-04
+
+    Bug fix - modifying last record in file and changing size of record caused
+    a big problem.
+
+  XTide 2.6.1 (2003-07-23)
+
+   (Bug) Incorporated libtcd patch:
+    Version 1.08
+    Jan C. Depner
+    2003-07-23
+
+    Bug fix - deleting last record in file caused a big problem.
+
+  XTide 2.6 (2003-05-28)
+
+   No code changes; just promoted to final release status.
+
+  XTide 2.6 BETA 4 (2003-03-27)
+
+   (Nit) Updated version string in libtcd.
+
+  XTide 2.6 BETA 3 (2003-03-27)
+
+   (Bug) There was another problem with the encoding of subordinate
+   stations in TCD files.  The only stations materially affected this time
+   were Gnat Cove, Carroll Inlet, Alaska, and Olga Point, Olga Strait,
+   Sitka Sound, Alaska.  However, the fix required another incompatible
+   change to the encoding of subordinate stations and updates to affected
+   code in libtcd and XTide.  TCD files produced with tcd-utils dated
+   earlier than 2003-03-27 and previous development or beta versions of
+   XTide 2.6 should be replaced to avoid getting incorrect results.
+
+  XTide 2.6 BETA 2 (2003-03-18)
+
+   (Bugs!) tcd-utils was building some subordinate current stations
+   incorrectly.  The fix required an incompatible change to the encoding
+   of slack offsets and updates to affected code in libtcd and XTide.  TCD
+   files produced with tcd-utils dated earlier than 2003-03-18 and
+   previous development or beta versions of XTide 2.6 should be replaced
+   to avoid getting incorrect results on subordinate current stations.
+   Except... ironically, it appears that some of the subordinate current
+   stations presently in the database are broken in precisely the same way
+   as one of the TCD bugs, with the result that in those cases, you get
+   the right answer only with the broken code.  The issue with those is
+   the bogus assumption that the right thing to do if you don't get slack
+   offsets is set them to zero.  If you don't get slack offsets
+   (floodbegins, ebbbegins), OMIT those fields!  When slack offsets are
+   omitted, XTide will interpolate a reasonable value.  But if you specify
+   zero, you get zero -- even if that's unreasonable given the skew of max
+   and min.  (This note has been added to the relevant portion of the
+   documentation.)
+
+  XTide 2.6 BETA 1 (2003-02-20)
+
+   (Optimization) Changed from ASCII format harmonics files (harmonics.txt
+   and offsets.xml) to binary TCD format (harmonics.tcd); retired the
+   problematic fast loader since all loading now occurs at ludicrous
+   speed.  Thanks again to Jan Depner.
+
+   (Feature) Added setting to enable inferred constituents (Jan Depner).
+
+   (Code rot) Expunged all uses of deprecated C++ streams from the code
+   except for the verbose debugging code that hasn't been used in ages.
+
+   (Feature) Added support for the following command line syntactic
+   shortcuts:
+     * Arguments can be concatenated with their switches.
+     * A yes/no switch that omits its argument implies "y".
+     * Using +xx instead of -xx for a yes/no switch inverts the argument
+       (so if the argument is omitted, "n" is implied).
+
+   (Feature) Overhauled usage of time_t to allow timestamps to range
+   before 1970 and after 2037.  Added TIME_WORKAROUND to enable access to
+   the past and future years on platforms where time_t is 32 bits.
+
+   (Portability) Changed default time formats when compiling under Irix to
+   work around lack of support for %l in SGI's strftime implementation.
+   C.f., similar Cygwin bug fixed in XTide 2.5 BETA 1 (2002-05-21) and the
+   "fix" that started it all in XTide 2.4 BETA 1 (2001-03-25).  What a
+   pain.
+
+   (Nits) Gave the control panel a scrollbar.  Stabilized the layouts of
+   the control panel, text, raw, and medium rare modes.  Merged
+   xxRareModes into xxTextMode.
+
+   (Feature) Replaced the now mostly useless filename field in location
+   lists with a type field (reference or subordinate).
+
+   (Feature) The zone at the bottom of tide graphs previously used to note
+   slack and mark crossing events is now shared by moon events.  The date
+   was replaced with a description that is abbreviated when things get
+   crowded.
+
+   (Feature) Added moonrise, moonset.
+
+  XTide 2.5 (2002-07-14)
+
+   (Nit) Tweaked some verbiage in the control panel.
+
+  XTide 2.5 BETA 1 (2002-05-21)
+
+   (Portability) Tweaked autoconfig files to allow clean compilation under
+   OS X.  Thanks to Martin Hofmann.
+
+   (Portability) Changed default time formats when compiling under Cygwin
+   to work around lack of support for %l and %Z formats by Cygwin's
+   strftime implementation.
+
+   (Feature) Added medium rare mode.
+
+   (Feature) Made raw and medium rare modes accessible from the GUI.
+
+   (Feature) Incorporated new globe code, which added coastlines and a new
+   flat map projection, from Jan C. Depner.
+
+   (Feature) Allowed switching between Cylindrical Equidistant and
+   Orthographic Projections.  Added setting to specify user's preference
+   (flatearth).
+
+   (Feature) Globe now rotates on two axes, and both globe and map include
+   latitude and longitude readouts.
+
+   (Feature/Portability) Incorporated patch from John Holden to improve
+   xttpd user interface for requesting tide calendars and to work around
+   an Alpha-specific bug in timestamp rendering.
+
+   (Code rot) Updated :America/Iqaluit, :America/Mexico_City, and
+   :Mexico/General in time zone compatibility table.
+
+   (Bug) "Mean Sea Level" verbiage corrected to say "Mean Tide Level."
+   Identifiers containing msl were not renamed.
+
+   (Nit) Updated disclaimer text.
+
+   (Nit) Cleaned up xxTimestamp.  N.B., newer versions of Athena Widgets
+   now show two columns of choices where pull-down buttons used to run off
+   the screen, so the "tiny font" previously used for some of the choices
+   is no longer used here.  It is still used in the clock icon.
+
+   (Nit) Added a line to the 'install' target of Makefile.in to create the
+   target directories if they do not exist.
+
+  XTide 2.4 (2001-05-09)
+
+   (Bug) Fixed an OLD memory management bug in Dstr.cc.  Thanks to Phil
+   Thornton.
+
+  XTide 2.4 BETA 2 (2001-04-15)
+
+   (Bug) xttpd did not supply a robots.txt page.  Added robots.txt patch
+   from John Stanley.
+
+  XTide 2.4 BETA 1 (2001-03-25)
+
+   (Feature) Enhanced HFILE_PATH to enable searching of directories.
+
+   (Bug) Removed, or at least improved, a kludge in Timestamp that was
+   preventing 24-hour time users from getting leading zeros on hours.  A
+   compensatory change to the default time and hour formats was also made.
+
+   (Nit) Updated example in NO_HFILE_PATH error message again.
+
+   (Tuning) Reduced fastload limit to 2.
+
+   (Feature) Xttpd now shows the versions of the harmonics files that it's
+   using on its main page.
+
+   (Feature) Added a note attribute to subordinate station XML.
+
+   (Optimization) Incorporated patch to squeeze out null constituents.
+
+  XTide 2.3 (2000-12-08)
+
+   No code changes; just promoted to final release status.
+
+  XTide 2.3 BETA 2 (2000-10-01)
+
+   (Code rot) Added :America/Belem, :America/Fortaleza, and
+   :America/Maceio and revised abbreviation for :America/Sao_Paulo in time
+   zone compatibility table.
+
+   (Compliance) Smashed case in all (I hope) HTML markup tags for XHTML
+   compatibility (sugg. Richard Kennedy).
+
+   (Nit) Typographical tweaks in xttpd.
+
+  XTide 2.3 BETA 1 (2000-09-03)
+
+   (Feature) Replaced calendar mode with a clone of the much more popular
+   one that Dean Pentcheff has been using on his web site.  The "old"
+   calendar mode is still available from tide as -m C.
+
+   (Feature) Added setting to suppress sunrise, sunset, moon phases.
+
+   (Code rot) Added :America/Goose_Bay to timezone compatibility table.
+
+   (Nit) Updated example in NO_HFILE_PATH error message.
+
+  XTide 2.2.2 (2000-07-30)
+
+   (Compliance) To comply with XML 1.0, the offsets.xml file was changed
+   to have a single "root" document element.  As a result, XTide 2.2.1 and
+   earlier cannot find the stations in it.  This patch enables XTide to
+   read either old or new offsets.xml files.  The prolog of .xtide.xml
+   written by XTide is also made compliant.
+
+  XTide 2.2.1 (2000-07-16)
+
+   (Code rot) Added :America/Hermosillo and :America/Iqaluit to the
+   zoneinfo compatibility table.
+
+  XTide 2.2 (2000-01-12)
+
+   No code changes; just promoted to final release status.
+
+  XTide 2.2 BETA 1 (1999-12-12)
+
+   (Compliance) Xttpd now backgrounds itself and logs to the syslog
+   facility.
+
+   (Feature) Added /etc/xtide.conf as alternative to setting HFILE_PATH.
+   The format of this should probably be XML to guard against future
+   expansion, but for now it is as contributed from Debian (Peter
+   Galbraith).
+
+   (Feature) Ditched Imake for Autoconf, which simplifies installation.
+
+   (Feature) Installed a Unicode-esque collating sequence for Latin1.
+
+   (Feature) xttpd: applied location lookup patch from John Holden.  This
+   enables URLs of the form http://whatever/locations/name in addition to
+   the more reliable http://whatever/locations/nnn.html syntax.  The
+   name-based URLs are not promulgated by xttpd itself.  The new syntax is
+   documented in a new hints & tricks page served by xttpd.
+
+   (Feature) If you set the environment variable XTIDE_DEFAULT_LOCATION,
+   it works like the default location feature of XTide 1.
+
+   (Robustness) Improved resolution of reference stations for subordinate
+   stations to eliminate many SUB_SUBORDINATE errors.  Fast loading is
+   still sensitive to the ordering of HFILE_PATH.
+
+   (Code rot) Added an autoconf step to deal with mutually incompatible
+   requirements of different platforms on the signature of the accept()
+   function as used in xttpd.cc.
+
+   (Code rot) Added Antarctic time zones to the compatibility table in
+   Timestamp.cc.
+
+   (Compliance) Changed packaging from xtide2/* every time to
+   xtide-X.Y.Z/*.  Changed suggested disposition of xttpd from bin to
+   sbin.  Changed xttpd man page section from 1 to 8.  Changed suggested
+   disposition of harmonics files from /etc to /usr/local/share/xtide.
+
+   (Compliance) Moved some static functions into externC.cc with
+   appropriate signature changes to placate the Sun compiler's anachronism
+   checker.
+
+   (Portability) Added workaround for bug in Sun WorkShop Compiler C++
+   SPARC Version 5.000.  Thanks to Raphael Malyankar.
+
+   (Nit) Applied patch from Peter Galbraith to set background color in
+   xttpd to white.
+
+  XTide 2.1.7 (1999-08-14)
+
+   (Bug) Fixed drawing of Latin1 characters.  This involved increasing the
+   font height by one row, which will cause minor but noticeable changes
+   in the placement of text.
+
+   (Portability) Changed backlog parameter for socket in xttpd.cc from 0
+   to 5.  Digital Unix would accept no connections if backlog was 0.
+   Thanks to Giuseppe Cabras.
+
+  XTide 2.1.6 (1999-08-09)
+
+   (Bug) Fixed xttpd assertion failure when subordinate stations don't
+   supply time zones.
+
+   (Bug) Made RGBGraph stop crashing when it's asked to draw characters
+   that it doesn't know.  To do, teach RGBGraph to draw the entire Latin1
+   character set.
+
+   (Portability) Messed with usage of select() in xttpd.cc to try to make
+   it more portable.  Giuseppe Cabras reported trouble with it under
+   Digital Unix.
+
+   (Portability) Added Imakefile.hp from Christopher Caldwell.
+
+  XTide 2.1.5 (1999-07-22)
+
+   (Portability) Cleaned up overloading ambiguities and ANSI compliance
+   problems encountered with HP aC++ B3910B A.01.18 (HP-UX 10.20).  Thanks
+   to Christopher Caldwell.
+
+  XTide 2.1.4 (1999-05-17)
+
+   (Portability) Got rid of some dubious implicit conversions between
+   PredictionValue::Unit and its encapsulated enum.  Don't know if they
+   were strictly conforming or not, but they made the latest Sun compiler
+   use the wrong constructor.  This showed up as UNRECOGNIZED_UNITS errors
+   when trying to load a tide station.
+
+  XTide 2.1.3 (1999-05-16)
+
+   (Code rot) Stopped including stream.h in common.hh.  It was always
+   redundant with iostream.h, but now stream.h has vanished from Sun's
+   latest compiler.
+
+  XTide 2.1.2 (1999-03-15)
+
+   Add support for color specifications having the deprecated #RRGGBB
+   format, which recently resurfaced on Debian.
+
+   Patch from Falk Hueffner for Timestamp::tm2utc.  On his Alpha (BSD?),
+   time_t is 64 bits but gmtime returns NULL if the time_t is out of a
+   certain range, which was leading to segfaults.
+
+   Fixed reporting of MKTIME_FAILED errors caused by bad timestamps on the
+   -b and -e switches.
+
+  XTide 2.1.1 (1999-01-24)
+
+   Patch to get rid of all of the references to universe.digex.net that
+   appeared in the sources and documentation.  No functional changes.
+
+  XTide 2.1 (1998-12-20)
+
+   Implemented something similar to a patch sent by Thomas Dean to enable
+   the direction of current that he provided in his XML offsets to be
+   displayed in the boilerplate of text output.  Making it work for
+   reference stations is deferred until whenever reference stations are
+   migrated to XML and the new attributes can conveniently be added.
+
+   Removed $(DEPXPMLIB) from xtide dependencies (DEPLIBS1 in manifest) to
+   get rid of this needless compilation failure:
+
+make: *** No rule to make target `/usr/X11R6/lib/libXpm.a', needed by `xtide'.
+Stop.
+
+   The cause of this was that some Linux distributions only provide a
+   shared libXpm, while the dependencies generated by Imake check for the
+   existence of the static library.
+
+   Made -o switch append instead of overwrite files per request from AED.
+
+  XTide 2.0.1 (1998-10-04)
+
+   Fixed a bug reported by Alan Davis which caused access violations and
+   other problems when a default center longitude was set in the control
+   panel.
+
+  XTide 2.0 (1998-07-28)
+
+   No code changes; just promoted to final release status.
+
+  XTide 2.0 Beta.3 (1998-06-28)
+
+   Reversed order of location list latitude sort so that points north
+   appear at the top (sug. Dave Davey).
+
+  XTide 2.0 Beta.2 (1998-06-02)
+
+   SGI portability fix from David Warren:  changed declarations of nested
+   structs in header files to use Classname::structname instead of struct
+   structname.
+
+  XTide 2.0 Beta.1 (1998-06-01)
+
+   First versioned release of XTide 2.
+     __________________________________________________________________
+
+   [7]<- Previous [8]-> Next [9]Contents
+
+References
+
+   1. http://www.flaterco.com/xtide/quickinst.html
+   2. http://www.flaterco.com/xtide/news.html
+   3. http://www.flaterco.com/xtide/xtide.html#contents
+   4. http://www.flaterco.com/xtide/files.html#pubs
+   5. http://www.flaterco.com/xtide/mincurrents.html
+   6. http://www.flaterco.com/xtide/tcd_notes.html
+   7. http://www.flaterco.com/xtide/quickinst.html
+   8. http://www.flaterco.com/xtide/news.html
+   9. http://www.flaterco.com/xtide/xtide.html#contents
