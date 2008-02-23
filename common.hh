@@ -26,6 +26,8 @@
 // Under Visual C++ 2008 Express Edition, this is needed to get M_PI etc.
 #define _USE_MATH_DEFINES
 
+#include <config.h>
+
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>

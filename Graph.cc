@@ -368,6 +368,45 @@ void Graph::drawBlurbs (int topLine, SafeVector<EventBlurb> &blurbs) {
     labelEvent (topLine, *blurbit);
 }
 
+Timestamp Graph::getStartTime(Station *station, Timestamp nominalStartTime)
+{
+  const double ymin (vertGraphMargin * (double)_ySize);
+  const double ymax ((double)_ySize - ymin);
+  const double valmin (station->minLevel().val());
+  const double valmax (station->maxLevel().val());
+  assert (valmin < valmax);
+
+  unsigned lineStep, labelWidth, labelRight;
+  int minDepth, maxDepth;
+  const Dstr unitsDesc (Units::shortName (station->predictUnits()));
+  figureLabels (ymax, ymin, valmax, valmin, unitsDesc, lineStep, labelWidth,
+		labelRight, minDepth, maxDepth);
+ 
+  Interval startOffset = getIntervalOffsetAtPosition(station, startPosition(labelWidth));
+  Timestamp startTime (nominalStartTime - startOffset);
+  return startTime;
+}
+
+Timestamp Graph::getEndTime(Station *station, Timestamp nominalStartTime)
+{
+  Interval endOffset = getIntervalOffsetAtPosition(station, _xSize);
+  Timestamp startTime = getStartTime(station, nominalStartTime);
+  Timestamp endTime = startTime + endOffset;
+  return endTime;
+}
+
+Interval Graph::getIntervalOffsetAtPosition(Station *station, unsigned xOffset) {
+
+  Interval increment (std::max ((interval_rep_t)1,
+           Global::intervalround (Global::aspectMagicNumber /
+                                  (double)_ySize /
+  			          (aspectFudgeFactor() * station->aspect))));
+
+  Interval offsetInterval = 
+	  increment * xOffset;
+  return offsetInterval;
+
+}
 
 void Graph::drawTides (Station *station,
                        Timestamp nominalStartTime,
@@ -395,9 +434,8 @@ void Graph::drawTides (Station *station,
            Global::intervalround (Global::aspectMagicNumber /
                                   (double)_ySize /
   			          (aspectFudgeFactor() * station->aspect))));
-  Timestamp startTime (nominalStartTime -
-		       increment * startPosition(labelWidth));
-  Timestamp endTime (startTime + increment * _xSize);
+  Timestamp startTime(getStartTime(station, nominalStartTime));
+  Timestamp endTime (getEndTime(station, nominalStartTime));
   Timestamp currentTime ((time_t)time(NULL));
 
   // First get a list of the relevant tide events.  Need some extra on

@@ -24,6 +24,13 @@ public:
   Graph (unsigned xSize, unsigned ySize, GraphStyle style = normal);
   virtual ~Graph();
 
+  // get the Timestamp offset for the time at offset x in the graph
+  Timestamp getStartTime(Station *station, Timestamp nominalStartTime);
+  Timestamp getEndTime(Station *station, Timestamp nominalStartTime);
+
+  Interval getIntervalOffsetAtPosition(Station *station, unsigned xOffset);
+
+
   // angle is a kludge to help out the tide clock icon.
   void drawTides (Station *station,
                   Timestamp nominalStartTime,

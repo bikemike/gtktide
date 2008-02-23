@@ -1,13 +1,62 @@
 # $Id: Makefile.am 2955 2008-01-25 23:17:01Z flaterco $
 
-bin_PROGRAMS  = xtide tide
+SUBDIRS = libtcd data
+
+xtidedocdir = ${datadir}/doc/xtide
+
+xtidedoc_DATA =  INSTALL NEWS README AUTHORS ChangeLog
+
+BUILD_PROGS =  
+BUILD_MANUALS =
+
+if BUILD_XTIDE
+BUILD_PROGS +=  xtide
+BUILD_MANUALS += xtide.1
+endif
+
+if BUILD_TIDE
+BUILD_PROGS +=  tide
+BUILD_MANUALS += tide.1
+endif
+
+if BUILD_GTKTIDE
+BUILD_PROGS +=  gtktide
+endif
+
+bin_PROGRAMS  = $(BUILD_PROGS)
+
+if BUILD_XTTPD
 sbin_PROGRAMS = xttpd
-dist_man_MANS = tide.1 xtide.1 xttpd.8
+BUILD_MANUALS += xttpd.8
+endif
+
+
+dist_man_MANS = $(BUILD_MANUALS)
+
 AM_CXXFLAGS   = @X_CFLAGS@
 BUILT_SOURCES = xml_y.h
 AM_YFLAGS     = -d
-CLEANFILES    = INSTALL README ChangeLog NEWS AUTHORS README-QUICK
+
+COMMONCPPFLAGS = \
+	-DXTIDE_DATADIR=\""$(xtidedatadir)"\" \
+	-DXTIDE_HARMONICSDIR=\""$(harmonicsdir)"\" \
+	-I$(top_srcdir)/libtcd
+
+COMMONLDADD = \
+	libtcd/libtcd.la
+
+
+AM_CPPFLAGS = \
+	${COMMONCPPFLAGS}
+
+LDADD = \
+	${COMMONLDADD}
+
+	
+# CLEANFILES    = INSTALL README ChangeLog NEWS AUTHORS README-QUICK
 EXTRA_DIST    = CONFIGURE-HELP CodingConventions.txt README-QUICK \
+		${xtidedoc_DATA} \
+		tide.1 xtide.1 xttpd.8 \
 		scripts/xtide.conf.sample \
 		scripts/Fedora/rc.xttpd \
 		scripts/Fedora/xttpd-wrapper.sh \
@@ -47,6 +96,7 @@ COMMONSRCS += Dstr.cc Dstr.hh
 endif
 
 
+if BUILD_XTIDE
 xtide_SOURCES = $(COMMONSRCS) \
   errorExclaim.xpm.hh errorSunk.xpm.hh icon_48x48_3color.xpm.hh        \
   wvsrtv.cc xtide.cc xtide.hh xxAspect.cc xxAspect.hh xxClock.cc       \
@@ -66,130 +116,163 @@ xtide_SOURCES = $(COMMONSRCS) \
   xxX.cc xxX.hh
 
 xtide_LDFLAGS = @X_LIBS@
-xtide_LDADD = -lXaw -lXmu -lXt -lSM -lICE -lXext -lX11 -lXpm @X_EXTRA_LIBS@
+xtide_LDADD = -lXaw -lXmu -lXt -lSM -lICE -lXext -lX11 -lXpm @X_EXTRA_LIBS@ \
+	${COMMONLDADD}
+endif
 
 
+if BUILD_GTKTIDE
+gtktide_SOURCES = $(COMMONSRCS) \
+	gtktide.cc
+
+gtktide_CPPFLAGS = \
+	${COMMONCPPFLAGS} \
+	$(GTKTIDEDEPS_CFLAGS) \
+	$(HILDON_LIBS_CFLAGS) \
+	$(HILDON_1_CFLAGS) \
+	$(HILDON_FM_CFLAGS) \
+	$(HILDON_FM_2_CFLAGS) \
+	$(OSSO_MIME_CFLAGS) \
+	$(HILDON_MIME_CFLAGS) 
+
+gtktide_LDFLAGS = 
+
+gtktide_LDADD = \
+	${COMMONLDADD} \
+	$(GTKTIDEDEPS_LIBS) \
+	$(HILDON_LIBS_LIBS) \
+	$(HILDON_1_LIBS) \
+	$(HILDON_FM_LIBS) \
+	$(HILDON_FM_2_LIBS) \
+	$(OSSO_MIME_LIBS) \
+	$(HILDON_MIME_LIBS) 
+endif
+
+if BUILD_TIDE
 tide_SOURCES =  $(COMMONSRCS) tide.cc
 
+endif
 
+if BUILD_XTTPD
 xttpd_SOURCES = $(COMMONSRCS) ZoneIndex.cc ZoneIndex.hh xttpd.cc
 # xttpd needs -lsocket -lnsl on Solaris too.
-xttpd_LDADD = @X_EXTRA_LIBS@
-
+xttpd_LDADD = @X_EXTRA_LIBS@ \
+	${COMMONLDADD}
+endif
 
 xmlclean:
 	rm -f xml_l.cc xml_y.cc xml_y.h
 
 
-docs:   INSTALL README ChangeLog NEWS AUTHORS README-QUICK
-.PHONY: INSTALL README ChangeLog NEWS AUTHORS README-QUICK docs
+#docs:   INSTALL README ChangeLog NEWS AUTHORS README-QUICK
+#.PHONY: INSTALL README ChangeLog NEWS AUTHORS README-QUICK docs
 
 
 # "Generic" INSTALL moved to CONFIGURE-HELP so that something more helpful
 # can go here.
-INSTALL:
-	lynx -dump "http://www.flaterco.com/xtide/installation.html" > INSTALL
+#INSTALL:
+#lynx -dump "http://www.flaterco.com/xtide/installation.html" > INSTALL
 
 
-README:
-	lynx -dump "http://www.flaterco.com/xtide/xtide.html" > README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/disclaimer.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/introduction.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/sysreq.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/installation.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/ports.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/modes.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/interactive.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/advanced.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/tty.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/xttpd.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/settings.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/harmonics.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/bugs.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/faq.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/design.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/bibliography.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/time_t.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/mincurrents.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/pound_to_fit.html" >> README
-	echo "" >> README
-	echo "################################################################" >> README
-	echo "" >> README
-	lynx -dump "http://www.flaterco.com/xtide/xtide1diff.html" >> README
-	echo "" >> README
+#README:
+#lynx -dump "http://www.flaterco.com/xtide/xtide.html" > README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/disclaimer.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/introduction.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/sysreq.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/installation.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/ports.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/modes.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/interactive.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/advanced.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/tty.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/xttpd.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/settings.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/harmonics.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/bugs.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/faq.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/design.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/bibliography.html" >> README
+#echo "" >> README
+###echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/time_t.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/mincurrents.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+##echo "" >> README
+##lynx -dump "http://www.flaterco.com/xtide/pound_to_fit.html" >> README
+#echo "" >> README
+#echo "################################################################" >> README
+#echo "" >> README
+#lynx -dump "http://www.flaterco.com/xtide/xtide1diff.html" >> README
+#echo "" >> README
+#
 
+#ChangeLog:
+#lynx -dump "http://www.flaterco.com/xtide/changelog.html" > ChangeLog
+#
 
-ChangeLog:
-	lynx -dump "http://www.flaterco.com/xtide/changelog.html" > ChangeLog
-
-
-NEWS:
-	lynx -dump "http://www.flaterco.com/xtide/news.html" > NEWS
-
-
-AUTHORS:
-	lynx -dump "http://www.flaterco.com/xtide/credits.html" > AUTHORS
-
-
-README-QUICK:
-	lynx -dump "http://www.flaterco.com/xtide/quickinst.html" > README-QUICK
-
-
-# Cleanup2006 Done
+#NEWS:
+#lynx -dump "http://www.flaterco.com/xtide/news.html" > NEWS
+#
+#
+#AUTHORS:
+#lynx -dump "http://www.flaterco.com/xtide/credits.html" > AUTHORS
+#
+#
+#README-QUICK:
+#lynx -dump "http://www.flaterco.com/xtide/quickinst.html" > README-QUICK
+#
+#
+### Cleanup2006 Done

@@ -41,6 +41,9 @@ HarmonicsPath::HarmonicsPath ():
   // Get HFILE_PATH from environment or /etc/xtide.conf
   Dstr hfile_path (getenv ("HFILE_PATH"));
   if (hfile_path.isNull()) {
+    hfile_path = XTIDE_HARMONICSDIR;
+  }
+  if (hfile_path.isNull()) {
     FILE *configfile;
     if ((configfile = fopen (confFile, "rb"))) {
       hfile_path.getline (configfile);

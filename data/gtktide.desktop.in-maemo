@@ -1,0 +1,16 @@
+[Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Type=Application
+Name=Tides and Currents
+Comment=Tide and current predictions
+Exec=gtktide
+Icon=gtktide-icon-app
+Categories=Application;GNOME;GTK;
+MimeType=
+StartupNotify=true
+Terminal=false
+X-Window-Icon=gtktide-icon-app
+X-Window-Icon-Dimmed=gtktide-icon-app
+X-Osso-Type=application/x-executable
+X-Osso-Service=org.yi.mike.gtktide
