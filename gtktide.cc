@@ -20,6 +20,19 @@
 #include <libosso.h>
 #endif
 
+using namespace Shape;
+
+class GtkRect : public Rectangle
+{
+public:
+	GtkRect(const GdkRectangle& r)
+	{
+		x = r.x;
+		y = r.y;
+		width = r.width;
+		height = r.height;
+	}
+};
 
 
 class ParsedColor
@@ -34,6 +47,7 @@ public:
 static ParsedColor cachedColors[Colors::numColors]; // Wants to be [Colorchoice]
 
 class GtkTideWindowImpl;
+class gtkGraph;
 
 class GtkTideWindow
 {
@@ -69,16 +83,13 @@ public:
 	static GtkToggleActionEntry action_entries_toggle[];
 
 
-	Station*         m_pStation; 
 	gint             m_iLastX;
 	gint             m_iLastY;
 	gint             m_iPressX;
 	gint             m_iPressY;
 
-	Timestamp        m_Timestamp;
-
 	bool             m_bMouseMoved;
-	Timestamp        m_TimestampScrollTo;
+	gint             m_ScrollToOffset;
 
 	guint            timeout_id_smooth_scroll;
 	guint            timeout_id_smooth_scroll_slowdown;
@@ -88,6 +99,8 @@ public:
 #ifdef MAEMO
 	osso_context_t*  osso_context;
 #endif
+
+	Graph*        m_pGraph;
 	
 };
 
@@ -199,8 +212,77 @@ class gtkGraph : public Graph
 
 {
 public:
-	gtkGraph (GdkDrawable *drawable, PangoContext* context, unsigned xSize, unsigned ySize, GraphStyle style = normal);
+	gtkGraph (GdkDrawable *drawable, PangoContext* context, GraphStyle style = normal);
+	//gtkGraph (GdkDrawable *drawable, PangoContext* context, GraphStyle style = clock);
 	~gtkGraph();
+
+	void setDrawable(GdkDrawable* d)
+	{
+		if (NULL != gc)
+			g_object_unref(gc);
+		drawable = d;
+		gc = gdk_gc_new(drawable);
+	}
+
+	virtual void invalidateRect(const Rectangle& rect)
+	{
+		GdkRectangle r;
+		r.x = rect.x;
+		r.y = rect.y;
+		r.width = rect.width;
+		r.height = rect.height;
+		gdk_window_invalidate_rect(drawable, &r, FALSE);
+	}
+
+	void moveGraphRegion(const Rectangle& rect, int dx, int dy)
+	{
+		GdkRectangle r;
+		r.x = rect.x;
+		r.y = rect.y;
+		r.width = rect.width;
+		r.height = rect.height;
+
+		GdkRegion* region = gdk_region_rectangle(&r);
+		gdk_window_move_region(drawable, region, dx, dy);
+		gdk_region_destroy(region);
+	}
+
+	virtual void drawRect(const Rectangle& r, Colors::Colorchoice c, bool bFilled = false)
+	{
+		ParsedColor parsedColor = cachedColors[c];
+		gdk_gc_set_rgb_fg_color(gc,&parsedColor.gdk_color);
+
+		gdk_draw_rectangle(drawable, gc, bFilled ? TRUE : FALSE, r.x, r.y, r.width, r.height);
+	}
+
+	virtual void drawLine(const Point& p1, const Point& p2, Colors::Colorchoice c)
+	{
+		ParsedColor parsedColor = cachedColors[c];
+		gdk_gc_set_rgb_fg_color(gc,&parsedColor.gdk_color);
+		gdk_draw_line(drawable, gc, p1.x, p1.y, p2.x, p2.y);
+		printf("draw line\n");
+	}
+
+	virtual void drawPolygon(const std::vector<Shape::Point>& points, Colors::Colorchoice c, bool filled = false)
+	{
+		GdkPoint* gdk_points = new GdkPoint[points.size()];
+		for (int i = 0; i < points.size(); ++i)
+		{
+			gdk_points[i].x = points[i].x;
+			gdk_points[i].y = points[i].y;
+		}
+		ParsedColor parsedColor = cachedColors[c];
+		gdk_gc_set_rgb_fg_color(gc,&parsedColor.gdk_color);
+		gdk_draw_polygon(drawable, gc, FALSE, gdk_points, points.size());
+		if (filled)
+			gdk_draw_polygon(drawable, gc, TRUE, gdk_points, points.size());
+		delete [] gdk_points;
+	}
+
+	void processUpdates()
+	{
+		gdk_window_process_updates(drawable, FALSE);
+	}
 
 protected:
 	GdkGC*              gc;
@@ -210,6 +292,9 @@ protected:
 	const bool          antiAliasingDisabled;
 	GdkDrawable*        drawable;
 	GdkPixbuf*          pixbufCache;
+
+
+	
 
 	void                startPixelCache();
 	void                stopPixelCache();
@@ -226,13 +311,14 @@ protected:
 
 	void                setPixel (int x, int y, Colors::Colorchoice c);
 	void                setPixel (int x, int y, Colors::Colorchoice c, double saturation);
+
+
 };
 
 
-gtkGraph::gtkGraph (GdkDrawable* drawable, PangoContext* context , unsigned xSize,
-                              unsigned ySize,
+gtkGraph::gtkGraph (GdkDrawable* drawable, PangoContext* context,
                               GraphStyle style) :
-	Graph (xSize, ySize, style),
+	Graph (style),
 	antiAliasingDisabled (Global::settings["aa"].c == 'n'),
 	drawable(drawable),
 	pango_context(context),
@@ -240,13 +326,14 @@ gtkGraph::gtkGraph (GdkDrawable* drawable, PangoContext* context , unsigned xSiz
 	pixbufCache(NULL)
 
 {
-	assert (xSize >= Global::minGraphWidth && ySize >= Global::minGraphHeight);
+	//assert (xSize >= Global::minGraphWidth && ySize >= Global::minGraphHeight);
 	if (NULL != pango_context)
 	{
 		pango_layout = pango_layout_new(pango_context);
 	}
 
-	gc = gdk_gc_new(drawable);
+	if (NULL != drawable)
+		gc = gdk_gc_new(drawable);
 }
 
 
@@ -300,6 +387,7 @@ void gtkGraph::setPixel (int x,
 {
 	if (x < 0 || x >= (int)_xSize || y < 0 || y >= (int)_ySize)
 		return;
+	//printf("set pixel!\n");
 
 	if (antiAliasingDisabled) 
 	{
@@ -308,6 +396,7 @@ void gtkGraph::setPixel (int x,
 	} 
 	else 
 	{
+		return;
 		guint32 pixel;
 
 		if (NULL != pixbufCache)
@@ -357,7 +446,6 @@ void gtkGraph::drawHorizontalLine (int xlo,
 					int y,
 					Colors::Colorchoice c) 
 {
-
 	ParsedColor parsedColor = cachedColors[c];
 	gdk_gc_set_rgb_fg_color(gc, &parsedColor.gdk_color);
 
@@ -391,7 +479,7 @@ void gtkGraph::startPixelCache()
 		g_object_unref(pixbufCache);
 	}
 
-	pixbufCache = gdk_pixbuf_get_from_drawable(NULL, drawable, NULL, 0, 0, 0, 0, _xSize, _ySize);
+	//pixbufCache = gdk_pixbuf_get_from_drawable(NULL, drawable, NULL, 0, 0, 0, 0, _xSize, _ySize);
 }
 
 
@@ -488,19 +576,19 @@ timeout_smooth_scroll_slowdown(gpointer data)
 			ival = diff;
 		}
 
-		gtkGraph g(widget->window, NULL, widget->allocation.width, widget->allocation.height);
-		Interval interval = g.getIntervalOffsetAtPosition(pTideWindowImpl->m_pStation,ival); 
+		Interval interval = pTideWindowImpl->m_pGraph->getIntervalOffsetAtPosition(ival); 
 
+		Timestamp timestamp;
 		if (0 > diff)
 		{
-			pTideWindowImpl->m_Timestamp = pTideWindowImpl->m_Timestamp + interval;
-		}
+			timestamp = pTideWindowImpl->m_pGraph->getNominalStartTime() + interval;
+		} 
 		else
 		{
-			pTideWindowImpl->m_Timestamp = pTideWindowImpl->m_Timestamp - interval;
+			timestamp = pTideWindowImpl->m_pGraph->getNominalStartTime() - interval;
 		}
 
-		gdk_window_invalidate_rect(widget->window, NULL, FALSE);
+		pTideWindowImpl->m_pGraph->setNominalStartTime(timestamp);
 	}
 	
 	gint vdistance = (gint)(timeout_secs * vvelocity_avg);
@@ -555,10 +643,9 @@ static void  combo_changed (GtkComboBox *widget, gpointer data)
 
 			if ( 0 == strcmp(str_selected, name.aschar()))
 			{
-				pTideWindowImpl->m_pStation = stations[a]->load();
-				pTideWindowImpl->m_pStation->setUnits(Units::meters);
-
-				gdk_window_invalidate_rect(pTideWindowImpl->m_pDrawingArea->window, NULL, FALSE);
+				Station* pStation = stations[a]->load();
+				pStation->setUnits(Units::meters);
+				pTideWindowImpl->m_pGraph->setStation(pStation);
 			}
 
 		}
@@ -575,23 +662,27 @@ timeout_smooth_scroll(gpointer data)
 	GtkTideWindowImpl* pTideWindowImpl = (GtkTideWindowImpl*)data;
 	GtkWidget* widget = pTideWindowImpl->m_pDrawingArea;
 
-	Interval i = pTideWindowImpl->m_TimestampScrollTo - pTideWindowImpl->m_Timestamp;
-	i = i / 2;
-	pTideWindowImpl->m_Timestamp += i;
+	double half = pTideWindowImpl->m_ScrollToOffset/2.;
 
-
-	i = abs(pTideWindowImpl->m_TimestampScrollTo - pTideWindowImpl->m_Timestamp);
-
-	gtkGraph g(widget->window, NULL, widget->allocation.width, widget->allocation.height);
-	Interval pixel_interval = g.getIntervalOffsetAtPosition(pTideWindowImpl->m_pStation ,1); 
-	if (i  < pixel_interval)
+	gint dist;
+	if (half < 0)
 	{
-		pTideWindowImpl->m_Timestamp = pTideWindowImpl->m_TimestampScrollTo;
+		dist = (int)(half - .5);
 	}
+	else
+	{
+		dist = (int)(half + .5);
+	}
+	pTideWindowImpl->m_ScrollToOffset -= dist;
 
-	gdk_window_invalidate_rect(widget->window, NULL, FALSE);
+	Interval pixel_interval = pTideWindowImpl->m_pGraph->getIntervalOffsetAtPosition(1); 
+	Interval ioffset = pixel_interval * (double)dist;
 
-	if (pTideWindowImpl->m_Timestamp == pTideWindowImpl->m_TimestampScrollTo)
+	Timestamp ts = pTideWindowImpl->m_pGraph->getNominalStartTime() + ioffset;
+
+	pTideWindowImpl->m_pGraph->setNominalStartTime(ts);
+
+	if (0 == pTideWindowImpl->m_ScrollToOffset)
 	{
 		pTideWindowImpl->timeout_id_smooth_scroll = 0;
 		return FALSE;
@@ -613,26 +704,7 @@ button_release_event_callback (GtkWidget *widget, GdkEventButton *event, gpointe
 		gint diff = pTideWindowImpl->m_iLastX - widget->allocation.width/2;
 		unsigned ival;
 
-		if (0 > diff)
-		{
-			ival = (unsigned)(-1*diff);
-		}
-		else
-		{
-			ival = diff;
-		}
-
-		gtkGraph g(widget->window, NULL, widget->allocation.width, widget->allocation.height);
-		Interval interval = g.getIntervalOffsetAtPosition(pTideWindowImpl->m_pStation,ival); 
-
-		if (0 > diff)
-		{
-			pTideWindowImpl->m_TimestampScrollTo = pTideWindowImpl->m_Timestamp - interval;
-		}
-		else
-		{
-			pTideWindowImpl->m_TimestampScrollTo = pTideWindowImpl->m_Timestamp + interval;
-		}
+		pTideWindowImpl->m_ScrollToOffset = diff;
 
 		pTideWindowImpl->StartTimeoutSmoothScroll();
 
@@ -732,19 +804,21 @@ motion_notify_event_callback (GtkWidget *widget, GdkEventMotion *event, gpointer
 		ival = diff;
 	}
 
-	gtkGraph g(widget->window, NULL, widget->allocation.width, widget->allocation.height);
-	Interval interval = g.getIntervalOffsetAtPosition(pTideWindowImpl->m_pStation,ival); 
+	Interval interval = pTideWindowImpl->m_pGraph->getIntervalOffsetAtPosition(ival); 
+
+	Timestamp ts = pTideWindowImpl->m_pGraph->getNominalStartTime();
+	
 
 	if (0 > diff)
 	{
-		pTideWindowImpl->m_Timestamp -= interval;
+		ts -= interval;
 	}
 	else
 	{
-		pTideWindowImpl->m_Timestamp += interval;
+		ts += interval;
 	}
 
-	gdk_window_invalidate_rect(widget->window, NULL, FALSE);
+	pTideWindowImpl->m_pGraph->setNominalStartTime(ts);
 	
 	
 	if (TRUE) // smooth drag slowdown
@@ -809,22 +883,36 @@ gboolean
 expose_event_callback (GtkWidget *widget, GdkEventExpose *event, gpointer data)
 {
 	GtkTideWindowImpl* pTideWindowImpl = (GtkTideWindowImpl*)data;
+	if (NULL == pTideWindowImpl->m_pGraph)
+		return TRUE;
 
-	PangoContext* context = gtk_widget_get_pango_context(widget);
-	gtkGraph g(widget->window, context, widget->allocation.width, widget->allocation.height);
+	Region region;
 
-	// pTideWindowImpl->m_Timestamp positions the graph in the middle of the screen
-	Interval interval = g.getIntervalOffsetAtPosition(pTideWindowImpl->m_pStation, widget->allocation.width/2); 
-	Timestamp start_time = g.getStartTime(pTideWindowImpl->m_pStation, pTideWindowImpl->m_Timestamp);
-	Interval offset = pTideWindowImpl->m_Timestamp - start_time;
-	start_time = pTideWindowImpl->m_Timestamp + offset;
-	start_time -= interval;
-	g.drawTides(pTideWindowImpl->m_pStation, start_time);
+	GdkRectangle *rects = NULL;
+	gint n_rects = 0;
+	gdk_region_get_rectangles(event->region, &rects, &n_rects);
+	//printf("rects: %d\n", n_rects);
+	for (int i = 0; i < n_rects; ++i)
+	{
+		//printf("clip area: %d %d %d %d\n", r.x, r.y, r.width, r.height);
+		region.addRectangle( GtkRect (rects[i]) );
+	}
+	g_free(rects);
 
+
+	pTideWindowImpl->m_pGraph->drawTides(region);
 
 	return TRUE;
 }
 
+void size_allocate_callback (GtkWidget *widget, GtkAllocation *allocation, gpointer data)
+{
+	GtkTideWindowImpl* pTideWindowImpl = (GtkTideWindowImpl*)data;
+	if (NULL == pTideWindowImpl->m_pGraph)
+		return;
+	//printf("setting size: %d %d\n", widget->allocation.width, widget->allocation.height);
+	pTideWindowImpl->m_pGraph->setSize(widget->allocation.width, widget->allocation.height);
+}
 
 GtkTideWindow::GtkTideWindow()
 {
@@ -836,23 +924,19 @@ GtkTideWindow::~GtkTideWindow()
 	delete m_pGtkTideWindowImpl;
 }
 
-GtkTideWindowImpl::GtkTideWindowImpl()
+GtkTideWindowImpl::GtkTideWindowImpl() :
+	m_pGraph(NULL)
 {
-	m_pStation = NULL; 
 	m_iLastX = 0;
 	m_iLastY = 0;
 	m_iPressX = 0;
 	m_iPressY = 0;
 
+
 #ifdef MAEMO
 	/* Initialize maemo application */
 	osso_context = osso_initialize("org.yi.mike.gtktide", PACKAGE_VERSION, TRUE, NULL);
 #endif
-
-	if (m_Timestamp.isNull())
-	{
-		m_Timestamp = Timestamp(time(NULL));
-	}
 
 	m_bMouseMoved = false;
 
@@ -866,7 +950,6 @@ GtkTideWindowImpl::GtkTideWindowImpl()
 	Global::settings["tf"].s = "%T %Z";
 	Global::settings["hf"].s = "%H";
 	StationIndex &stations = Global::stationIndex();
-	m_pStation = NULL;
 
 	for (int i = 0; i < Colors::numColors; ++i)
 	{
@@ -880,6 +963,7 @@ GtkTideWindowImpl::GtkTideWindowImpl()
 
 	m_pComboStations = gtk_combo_box_new_text();
 
+	Station* pStation = NULL;
 	for (unsigned long a=0; a<stations.size(); ++a)
 	{
 		
@@ -895,14 +979,14 @@ GtkTideWindowImpl::GtkTideWindowImpl()
 			gtk_combo_box_append_text(GTK_COMBO_BOX(m_pComboStations), name.utf8().aschar());
 		}
 
-		if (NULL == m_pStation && 0 == strcmp("Point No Point, British Columbia", stations[a]->name.aschar()))
+		if (NULL == pStation && 0 == strcmp("Point No Point, British Columbia", stations[a]->name.aschar()))
 		{
 			Dstr name = stations[a]->name;
 			gtk_combo_box_append_text(GTK_COMBO_BOX(m_pComboStations), name.utf8().aschar());
-			m_pStation = stations[a]->load();
-			m_pStation->setUnits(Units::meters);
+			pStation = stations[a]->load();
+			pStation->setUnits(Units::meters);
 			Dstr about;
-			m_pStation->aboutMode (about, Format::text, Global::codeset);
+			pStation->aboutMode (about, Format::text, Global::codeset);
 			
 			//gtk_combo_box_set_active(GTK_COMBO_BOX(m_pComboStations), a);
 			gtk_combo_box_set_active(GTK_COMBO_BOX(m_pComboStations), 0);
@@ -998,6 +1082,7 @@ GtkTideWindowImpl::GtkTideWindowImpl()
 	/* end setup GtkUIManager */
 
 	m_pDrawingArea = gtk_drawing_area_new();
+	//gtk_widget_set_double_buffered(m_pDrawingArea, false);
 	
 	gtk_widget_add_events(m_pDrawingArea, (GdkEventMask)
 			( GDK_BUTTON1_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK |
@@ -1017,6 +1102,9 @@ GtkTideWindowImpl::GtkTideWindowImpl()
 	g_signal_connect (G_OBJECT (m_pDrawingArea), "expose_event",  
 		G_CALLBACK (expose_event_callback), this);
 
+	g_signal_connect (G_OBJECT (m_pDrawingArea), "size_allocate",  
+		G_CALLBACK (size_allocate_callback), this);
+
 	g_signal_connect (G_OBJECT (m_pDrawingArea), "motion_notify_event",  
 		G_CALLBACK (motion_notify_event_callback), this);
 
@@ -1033,7 +1121,15 @@ GtkTideWindowImpl::GtkTideWindowImpl()
 
 	gtk_window_set_default_size (GTK_WINDOW(m_pWindow),600,400);
 
+
+	PangoContext* context = gtk_widget_get_pango_context(m_pDrawingArea);
+
 	gtk_widget_show_all(m_pWindow);
+
+	m_pGraph = new gtkGraph(m_pDrawingArea->window, context);
+	m_pGraph->setSize(m_pDrawingArea->allocation.width, m_pDrawingArea->allocation.height);
+	((gtkGraph*)m_pGraph)->setDrawable(m_pDrawingArea->window);
+	m_pGraph->setStation(pStation);
 }
 
 GtkTideWindowImpl::~GtkTideWindowImpl()
@@ -1121,12 +1217,33 @@ static void action_handler_cb(GtkAction *action, gpointer data)
 	}
 	else if (0 == strcmp(szAction,ACTION_VIEW_TODAY) )
 	{
+		Timestamp tsNominal(time(NULL));
+		Timestamp tsStartTime = 
+			pTideWindowImpl->m_pGraph->getStartTime(tsNominal);
+
+		Interval nominalOffset = tsNominal - tsStartTime;
+		Interval centerOffset  = 
+			pTideWindowImpl->m_pGraph->getIntervalOffsetAtPosition(
+					pTideWindowImpl->m_pDrawingArea->allocation.width/2); 
+
+		Timestamp tsCenter = tsNominal;// - centerOffset + nominalOffset;
+
 		// stop timeouts
 		pTideWindowImpl->StopTimeoutSmoothScroll();
 		pTideWindowImpl->StopTimeoutSmoothScrollSlowdown();
-		pTideWindowImpl->m_TimestampScrollTo = Timestamp(time(NULL));
+		Interval diff = tsCenter - pTideWindowImpl->m_pGraph->getNominalStartTime();
+		Interval increment = pTideWindowImpl->m_pGraph->getIntervalOffsetAtPosition(1); 
+		double offset = diff / increment;
+		if (offset < 0)
+		{
+			pTideWindowImpl->m_ScrollToOffset = (int)(offset - .5);
+		}
+		else
+		{
+			pTideWindowImpl->m_ScrollToOffset = (int)(offset + .5);
+		}
+
 		pTideWindowImpl->StartTimeoutSmoothScroll();
-		gdk_window_invalidate_rect(pTideWindowImpl->m_pDrawingArea->window, NULL, FALSE);
 	}
 	else if (0 == strcmp(szAction,ACTION_QUIT) || 
 		0 == strcmp(szAction, ACTION_QUIT_2) )

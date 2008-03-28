@@ -17,6 +17,122 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+namespace Shape
+{
+class Point
+{
+public:
+	Point(int _x, int _y) : x(_x), y(_y) {}
+	int x;
+	int y;
+
+	bool operator==(const Point& other) const
+	{
+		return x == other.x && y == other.y;
+	}
+	bool operator!=(const Point& other) const { return !operator==(other); }
+};
+
+class Rectangle
+{
+public:
+	Rectangle(int _x, int _y, int w, int h) : x(_x), y(_y), width(w), height(h){} 
+	Rectangle() : x(0), y(0), width(0), height(0){}
+	bool intersects(const Rectangle& other, Rectangle* intersectRect = NULL) const
+	{
+		bool bIntersect = false;
+		Rectangle tmpRect;
+		Rectangle* pRect = &tmpRect; 
+
+		if (NULL != intersectRect)
+		{
+			pRect = intersectRect;
+		}
+
+		pRect->x = std::max(x, other.x);
+		pRect->y = std::max(y, other.y);
+		pRect->width = std::min(x + width, other.x + other.width) - pRect->x;
+		pRect->height = std::min(y + height, other.y + other.height) - pRect->y;
+
+		if (0 < pRect->width && 0 < pRect->height)
+		{
+			bIntersect = true;
+		}
+		return bIntersect;
+	}
+
+	int x;
+	int y;
+	int width;
+	int height;
+};
+
+// a region contains zero or more rectangles
+class Region
+{
+public:
+	Region(){}
+	Region(const Rectangle& r)
+	{
+		addRectangle(r);
+	}
+
+	Region(int x, int y, int w, int h)
+	{
+		addRectangle(Rectangle(x,y,w,h));
+	}
+
+	void addRectangle(const Rectangle& r)
+	{
+		m_vectRectangles.push_back(r);
+	}
+
+	bool intersects(const Rectangle& r) const
+	{
+		bool bIntersects = false;
+		RectVect::const_iterator itr;
+		for (itr = m_vectRectangles.begin(); 
+			m_vectRectangles.end() != itr && !bIntersects; ++itr)
+		{
+			bIntersects = itr->intersects(r);
+		}
+		return bIntersects;
+	}
+
+
+	Rectangle getBoundingRect() const
+	{
+		int minx, miny;
+		int maxx, maxy;
+		bool bFirst = true;
+		RectVect::const_iterator itr;
+		for (itr = m_vectRectangles.begin(); 
+			m_vectRectangles.end() != itr; ++itr)
+		{
+			if (bFirst)
+			{
+				bFirst = false;
+				minx = itr->x;
+				miny = itr->y;
+				maxx = itr->x + itr->width;
+				maxy = itr->y + itr->height;
+			}
+			else
+			{
+				minx = std::min(minx, itr->x);
+				miny = std::min(miny, itr->y);
+				maxx = std::max(maxx, itr->x + itr->width);
+				maxy = std::max(maxy, itr->y + itr->height);
+			}
+		}
+		return Rectangle(minx, miny, maxx - minx, maxy - miny);
+	}
+
+private:
+	typedef std::vector<Rectangle> RectVect;
+	RectVect m_vectRectangles;
+};
+}
 
 class Graph {
 public:
@@ -24,10 +140,37 @@ public:
   Graph (unsigned xSize, unsigned ySize, GraphStyle style = normal);
   virtual ~Graph();
 
-  // get the Timestamp offset for the time at offset x in the graph
+	Station* m_pStation;
+	Timestamp m_tsStartTime;
+	Graph(GraphStyle style = normal);
+
+	void setSize(unsigned xSize, unsigned ySize);
+
+	void setNominalStartTime(Timestamp nominalStartTime);
+	Shape::Rectangle getTitleAreaRect();
+	Shape::Rectangle getDepthAreaRect();
+
+	void setStation(Station* station);
+
+	void drawTides(const Shape::Region& clipRegion);
+
+	void drawTides (Station *station,
+		Timestamp nominalStartTime,
+		const Shape::Region& clipRegion,
+		Angle *angle = NULL);
+
+  Timestamp getNominalStartTime() { return m_tsStartTime; }
+
+  Timestamp getStartTime();
+  Timestamp getStartTime(Timestamp nominalStartTime);
   Timestamp getStartTime(Station *station, Timestamp nominalStartTime);
+
+  Timestamp getEndTime();
+  Timestamp getEndTime(Timestamp nominalStartTime);
   Timestamp getEndTime(Station *station, Timestamp nominalStartTime);
 
+  // get the Timestamp offset for the time at offset x in the graph
+  Interval getIntervalOffsetAtPosition(unsigned xOffset);
   Interval getIntervalOffsetAtPosition(Station *station, unsigned xOffset);
 
 
@@ -99,14 +242,16 @@ protected:
                   unsigned lineStep,
                   unsigned labelWidth,
                   int minDepth,
-                  int maxDepth);
+                  int maxDepth,
+                  const Shape::Region& clipRegion);
 
   // This fills in the background, which indicates sunrise/sunset.
   void clearGraph (Timestamp startTime,
                    Timestamp endTime,
                    Interval increment,
                    Station *station,
-                   TideEventsOrganizer &organizer);
+                   TideEventsOrganizer &organizer,
+				   const Shape::Region& clipRect);
 
   // Mark current time.
   virtual void drawX (int x, double y);
@@ -152,11 +297,31 @@ protected:
   // Doubles are used for anti-aliasing in truecolor pixmaps.  Others
   // will just round off.
 
+	virtual void drawLine(const Shape::Point& p1, const Shape::Point& p2, Colors::Colorchoice c); 
+	virtual void drawPolygon(const std::vector<Shape::Point>& points, Colors::Colorchoice, bool filled = false); 
+	virtual void drawRect(const Shape::Rectangle& rect, Colors::Colorchoice, bool filled = false);
+
+	virtual void moveGraphRegion(const Shape::Rectangle& area, int dx, int dy){}
+
+	void invalidateRect();
+	void invalidateRect(int x, int y, int w, int h);
+	virtual void invalidateRect(const Shape::Rectangle& rect){}
+
+	void invalidateDepthLabelsArea();
+
+	virtual void processUpdates(){}
+
   // Ordering of y1 and y2 is irrelevant.
   void drawVerticalLine (int x,
                          double y1,
                          double y2,
+                         Colors::Colorchoice c,
+						 const Shape::Region& clipRegion);
+  void drawVerticalLine (int x,
+                         double y1,
+                         double y2,
                          Colors::Colorchoice c);
+
 
   // No line will be drawn if xlo > xhi.
   virtual void drawHorizontalLine (int xlo,
@@ -167,14 +332,23 @@ protected:
   // For methods taking int line:  from the top it's line 0, 1; from
   // the bottom it's -1, -2.
 
+  virtual void drawHourTick  (int x, Colors::Colorchoice c, const Shape::Region& clipRegion);
   virtual void drawHourTick  (int x, Colors::Colorchoice c);
+  virtual void labelHourTick (int x, const Dstr &label, const Shape::Region& clipRegion);
   virtual void labelHourTick (int x, const Dstr &label);
+
   virtual void drawTitleLine (const Dstr &title);
   virtual void labelEvent    (int topLine, const EventBlurb &blurb);
-  void drawBlurbs (int topLine, SafeVector<EventBlurb> &blurbs);
+  virtual void labelEvent    (int topLine, const EventBlurb &blurb, const Shape::Region& clipRegion);
+  void drawBlurbs (int topLine, SafeVector<EventBlurb> &blurbs, const Shape::Region& clipRegion);
 
   // This is the "simple" low level line drawer, where y-coordinates
   // behave in the usual way.
+  void drawVerticalLine (int x,
+                         int y1,
+                         int y2,
+                         Colors::Colorchoice c,
+						 const Shape::Region& clipRegion);
   virtual void drawVerticalLine (int x,
                                  int y1,
                                  int y2,
@@ -204,6 +378,9 @@ protected:
   virtual void drawString (int x, int y, const Dstr &s) = 0;
   void centerString       (int x, int y, const Dstr &s);
   void centerStringOnLine (int x, int line, const Dstr &s);
+  Shape::Rectangle getCenterStringRect(int x, int y, const Dstr& s);
+  Shape::Rectangle getCenterStringOnLineRect(int x, int line, const Dstr& s);
+  
 
   // These won't anti-alias, they will round the y coordinate.
   void drawHorizontalLine (int xlo, int xhi, double y, Colors::Colorchoice c);
