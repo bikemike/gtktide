@@ -25,7 +25,7 @@ public:
   // CamelCasing waived here for consistency with sunrise, sunset.
   enum EventType {max, min, slackrise, slackfall, markrise, markfall,
     sunrise, sunset, moonrise, moonset, newmoon, firstquarter, fullmoon,
-    lastquarter, rawreading};
+    lastquarter, dusk, dawn, rawreading};
 
   Timestamp               eventTime;
   EventType               eventType;

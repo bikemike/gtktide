@@ -38,6 +38,8 @@ const bool TideEvent::isSunMoonEvent () const {
   case TideEvent::firstquarter:
   case TideEvent::fullmoon:
   case TideEvent::lastquarter:
+  case TideEvent::dusk:
+  case TideEvent::dawn:
     return true;
   default:
     return false;
@@ -114,6 +116,10 @@ constString TideEvent::longDescription () const {
     return "Full Moon";
   case TideEvent::lastquarter:
     return "Last Quarter";
+  case TideEvent::dusk:
+    return "Dusk";
+  case TideEvent::dawn:
+    return "Dawn";
   case TideEvent::rawreading:
   default:
     assert (false);
@@ -132,6 +138,10 @@ constString TideEvent::shortDescription () const {
   case TideEvent::markrise:
   case TideEvent::markfall:
     return "Mark";
+  case TideEvent::sunrise:
+    return "Srise";
+  case TideEvent::sunset:
+    return "Sset";
   case TideEvent::moonrise:
     return "Mrise";
   case TideEvent::moonset:
@@ -144,6 +154,10 @@ constString TideEvent::shortDescription () const {
     return "Full";
   case TideEvent::lastquarter:
     return "3rd/4";
+  case TideEvent::dusk:
+    return "Dusk";
+  case TideEvent::dawn:
+    return "Dawn";
   default:
     assert (false);
   }

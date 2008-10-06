@@ -28,7 +28,7 @@ SubordinateStation::SubordinateStation (const Dstr &name_,
                                         const Dstr &note_,
                                         CurrentBearing minCurrentBearing_,
 					CurrentBearing maxCurrentBearing_,
-                                        const MetaFieldVector &metadata,
+                                        const MetaFields &metadata,
                                         const HairyOffsets &offsets):
   Station (name_,
            stationRef,
@@ -142,7 +142,7 @@ const PredictionValue SubordinateStation::predictTideLevel (
       // different next time anyway.
 
       // upper_bound: first element whose key is greater than predictTime.
-      TideEventsIterator right = organizer.upper_bound (predictTime);
+      TideEventsConstIterator right = organizer.upper_bound (predictTime);
       delta = Global::day;
       while (right == organizer.end()) {
 	// Need more future
@@ -152,7 +152,7 @@ const PredictionValue SubordinateStation::predictTideLevel (
       }
 
       // lower_bound: first element whose key is not less than predictTime.
-      TideEventsIterator left = organizer.lower_bound (predictTime);
+      TideEventsConstIterator left = organizer.lower_bound (predictTime);
       // If upper bound existed, this must also exist.
       assert (left != organizer.end());
       // But what we usually want is the previous one.
@@ -361,10 +361,10 @@ void SubordinateStation::addInterpolatedSubstationMarkCrossingEvents (
   // previous calls.)
 
   TideEventsOrganizer relevantEvents;
-  TideEventsIterator it = organizer.lower_bound(startTime);
-  TideEventsIterator stop = organizer.lower_bound(endTime);
+  TideEventsConstIterator it = organizer.lower_bound(startTime);
+  TideEventsConstIterator stop = organizer.lower_bound(endTime);
   while (it != stop) {
-    TideEvent &te = it->second;
+    const TideEvent &te = it->second;
     switch (te.eventType) {
     case TideEvent::max:
     case TideEvent::min:

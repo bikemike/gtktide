@@ -120,19 +120,19 @@ Calendar::Calendar (Station &station,
   // the sort and merge don't do anything.
 
   if (mode == Mode::altCalendar || form == Format::CSV)
-    for (TideEventsIterator it = organizer.begin();
+    for (TideEventsConstIterator it = organizer.begin();
 	 it != organizer.end();
 	 ++it) {
-      TideEvent &event (it->second);
+      const TideEvent &event (it->second);
       eventVectors[Date(event.eventTime,timezone)].push_back (event);
     }
   else {
     BetterMap<const Date, SafeVector<TideEvent> > uncorrectedSort,
                                                   correctedSort;
-    for (TideEventsIterator it = organizer.begin();
+    for (TideEventsConstIterator it = organizer.begin();
 	 it != organizer.end();
 	 ++it) {
-      TideEvent &event (it->second);
+      const TideEvent &event (it->second);
       if (event.uncorrectedEventTime.isNull())
         correctedSort[Date(event.eventTime,timezone)].push_back (event);
       else

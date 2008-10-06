@@ -57,7 +57,7 @@ Station::Station (const Dstr &name_,
                   const Dstr &note_,
                   CurrentBearing minCurrentBearing_,
                   CurrentBearing maxCurrentBearing_,
-                  const MetaFieldVector &metadata):
+                  const MetaFields &metadata):
   name(name_),
   coordinates(stationRef.coordinates),
   timezone(stationRef.timezone),
@@ -392,10 +392,56 @@ void Station::predictTideEvents (Timestamp startTime,
   if (startTime >= endTime)
     return;
 
-  addSimpleTideEvents (startTime, endTime, organizer, filter);
+  // calculate the time for which we need to add events
+  TideEventsConstIterator itr_first = organizer.begin();
+  TideEventsReverseIterator itr_last = organizer.rbegin();
 
-  if (filter == noFilter)
-    addSunMoonEvents (startTime, endTime, organizer);
+  typedef std::pair<Timestamp, Timestamp> TimeWindow; 
+  std::vector<TimeWindow> vectTimeWindows;
+
+  // FIXME if it is a great distance
+  // much greater than end - start
+  // clear the organizer first?
+
+  if (organizer.end() != itr_first && organizer.rend() != itr_last)
+  {
+	  if (itr_first->second.eventTime <= startTime)
+	  {
+		  if (itr_last->second.eventTime < endTime)
+		  {
+			  startTime = itr_last->second.eventTime;
+			  vectTimeWindows.push_back(TimeWindow(startTime, endTime));
+		  }
+	  }
+	  else
+	  {
+		  if (endTime <= itr_last->second.eventTime)
+		  {
+			  endTime = itr_first->second.eventTime;
+			  vectTimeWindows.push_back(TimeWindow(startTime, endTime));
+		  }
+		  else
+		  {
+			  vectTimeWindows.push_back(TimeWindow(startTime, itr_first->second.eventTime));
+			  vectTimeWindows.push_back(TimeWindow(itr_last->second.eventTime, endTime));
+		  }
+	  }
+  }
+  else
+  {
+	  vectTimeWindows.push_back(TimeWindow(startTime, endTime));
+  }
+
+  std::vector<TimeWindow>::iterator itr;
+
+  for (itr = vectTimeWindows.begin();
+		  vectTimeWindows.end() != itr; ++itr)
+  {
+	  addSimpleTideEvents (itr->first, itr->second, organizer, filter);
+
+	  if (filter == noFilter)
+		addSunMoonEvents (itr->first, itr->second, organizer);
+  }
 }
 
 
@@ -476,6 +522,28 @@ void Station::addSunMoonEvents (Timestamp startTime,
     bool s (em.strchr('s') != -1);
     bool M (em.strchr('M') != -1);
     bool m (em.strchr('m') != -1);
+    bool T (em.strchr('T') != -1);
+    bool t (em.strchr('t') != -1);
+
+    // Add twilight
+    if (!(S && s)) {    
+      te.eventTime = startTime;
+      Skycal::findNextRiseOrSet(te.eventTime, 
+                                coordinates,
+                                Skycal::twilight,
+                                te);
+      while (te.eventTime < endTime) {
+        if ((te.eventType == TideEvent::dawn && !T) ||
+          (te.eventType == TideEvent::dusk  && !t)) {
+          finishTideEvent (te);
+          organizer.add (te);
+        }
+        Skycal::findNextRiseOrSet(te.eventTime, 
+                                  coordinates,
+                                  Skycal::twilight,
+                                  te);
+      }
+    }
 
     // Add sunrises and sunsets.
     if (!(S && s)) {
@@ -562,7 +630,7 @@ void Station::extendRange (TideEventsOrganizer &organizer,
     endTime = startTime + howMuch;
     startTime -= Global::eventSafetyMargin;
   } else {
-    TideEventsIterator it = organizer.begin();
+    TideEventsConstIterator it = organizer.begin();
     assert (it != organizer.end());
     endTime = it->second.eventTime;
     startTime = endTime - howMuch;
@@ -584,12 +652,17 @@ void Station::extendRange (TideEventsOrganizer &organizer,
     startTime = it->second.eventTime + step;
     endTime = startTime + step * howMany;
   } else {
-    TideEventsIterator it = organizer.begin();
+    TideEventsConstIterator it = organizer.begin();
     assert (it != organizer.end());
     endTime = it->second.eventTime;
     startTime = endTime - step * howMany;
   }
   predictRawEvents (startTime, endTime, organizer);
+}
+
+
+const Dstr& Station::getMetaValue(const Dstr& name) {
+  return _metadata[name];
 }
 
 
@@ -646,23 +719,21 @@ void Station::aboutMode (Dstr &text_out,
   if (form == Format::HTML)
     text_out = "<table>\n";
   else {
-    MetaFieldVector::const_iterator it = _metadata.begin();
-    while (it != _metadata.end()) {
-      if (it->name.length() > maximumNameLength)
-        maximumNameLength = it->name.length();
-      ++it;
+    for (int i = 0; i < _metadata.size(); ++i) {
+      int len = _metadata[i].length();
+      if (len > maximumNameLength)
+        maximumNameLength = len;
     }
   }
-  MetaFieldVector::const_iterator it = _metadata.begin();
-  while (it != _metadata.end()) {
+  for (int i = 0; i < _metadata.size(); ++i) {
     if (form == Format::HTML) {
       text_out += "<tr><td valign=top>";
-      text_out += it->name;
+      text_out += _metadata[i];
       text_out += "</td><td valign=top><pre>";
-      text_out += it->value;
+      text_out += _metadata[_metadata[i]];
       text_out += "</pre></td></td>\n";
     } else {
-      Dstr tmp1 (it->name), tmp2 (it->value), tmp3;
+      Dstr tmp1 (_metadata[i]), tmp2 (_metadata[_metadata[i]]), tmp3;
       tmp1.pad (maximumNameLength+2);
       tmp2.getline (tmp3);
       tmp1 += tmp3;
@@ -677,7 +748,6 @@ void Station::aboutMode (Dstr &text_out,
       }
       text_out += tmp1;
     }
-    ++it;
   }
   if (form == Format::HTML)
     text_out += "</table>\n";
@@ -795,7 +865,7 @@ void Station::plainMode (Dstr &text_out,
   textBoilerplate (text_out, form);
   TideEventsOrganizer organizer;
   predictTideEvents (startTime, endTime, organizer);
-  TideEventsIterator it = organizer.begin();
+  TideEventsConstIterator it = organizer.begin();
   while (it != organizer.end()) {
     Dstr line;
     it->second.print (line, Mode::plain, form, *this);
@@ -837,10 +907,10 @@ void Station::statsMode (Dstr &text_out,
   NullablePredictionValue LLW;
   unsigned long numberOfSamples (0), numberOfMLLWSamples (0);
 
-  for (TideEventsIterator it = organizer.begin();
+  for (TideEventsConstIterator it = organizer.begin();
        it != organizer.end();
        ++it) {
-    TideEvent &te = it->second;
+    const TideEvent &te = it->second;
     assert (!te.isSunMoonEvent());
 
     if (!isCurrent) {
@@ -972,7 +1042,7 @@ void Station::rareModes (Dstr &text_out,
 
   TideEventsOrganizer organizer;
   predictRawEvents (startTime, endTime, organizer);
-  TideEventsIterator it = organizer.begin();
+  TideEventsConstIterator it = organizer.begin();
   while (it != organizer.end()) {
     Dstr line;
     it->second.print (line, mode, form, *this);

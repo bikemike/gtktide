@@ -53,12 +53,17 @@ static const PredictionValue prefer (
 ConstituentSet::ConstituentSet (const SafeVector<Constituent> &constituents,
                                 PredictionValue datum,
                                 const SimpleOffsets &adjustments):
-  _constituents(constituents),
   length(constituents.size()),
   _datum(datum),
   currentYear(2000),
   preferredLengthUnits(Units::meters) {
-  unsigned i;
+
+  SafeVector<Constituent>::const_iterator itr;
+  for (itr = constituents.begin(); constituents.end() != itr; ++itr)
+  {
+    OptimizedConstituent oc(*itr);
+    _constituents.push_back(oc);
+  }
 
   if (!Units::isCurrent(_datum.Units()))
     preferredLengthUnits = _datum.Units(); // Native units of station
@@ -68,22 +73,28 @@ ConstituentSet::ConstituentSet (const SafeVector<Constituent> &constituents,
   // Apply adjustments.
   _datum *= adjustments.levelMultiply();
   _datum.convertAndAdd (adjustments.levelAdd());
-  for (i=0;i<length;++i) {
-    _constituents[i].amplitude *= adjustments.levelMultiply();
-    // To move tides one hour later, you need to turn BACK the phases.
-    _constituents[i].phase -= adjustments.timeAdd() * _constituents[i].speed;
+  SafeVector<OptimizedConstituent>::iterator itr2;
+  for (itr2 = _constituents.begin() ; _constituents.end() != itr2;
+    ++itr2)
+  {
+    itr2->c.amplitude *= adjustments.levelMultiply();
+    itr2->c.phase -= adjustments.timeAdd() * itr2->c.speed;
   }
 
   // Nasty loop to figure maxdt and maxAmplitude.
   for (unsigned deriv=0; deriv<=maxDeriv+1; ++deriv) {
-    for (Year tempyear=_constituents[0].firstValidYear();
-         tempyear<=_constituents[0].lastValidYear();
+    for (Year tempyear=_constituents[0].c.firstValidYear();
+         tempyear<=_constituents[0].c.lastValidYear();
          ++tempyear) {
       Amplitude max;
-      for (i=0;i<length;++i)
-        max += _constituents[i].amplitude
-               * _constituents[i].nod(tempyear)
-  	       * pow(_constituents[i].speed.radiansPerSecond(), (double)deriv);
+
+      for (itr2 = _constituents.begin() ; _constituents.end() != itr2;
+        ++itr2)
+      {
+        max += itr2->c.amplitude
+               * itr2->c.nod(tempyear)
+  	       * pow(itr2->c.speed.radiansPerSecond(), (double)deriv);
+      }
       if (max > maxdt[deriv])
         maxdt[deriv] = max;
     }
@@ -98,8 +109,8 @@ ConstituentSet::ConstituentSet (const SafeVector<Constituent> &constituents,
   // Harmonics file range of years may exceed that of this platform.
   // Try valiantly to find a safe initial value.
   {
-    unsigned b = _constituents[0].firstValidYear().val();
-    unsigned e = _constituents[0].lastValidYear().val();
+    unsigned b = _constituents[0].c.firstValidYear().val();
+    unsigned e = _constituents[0].c.lastValidYear().val();
     if (b <= 2000 && e >= 2000)
       currentYear = 2000;
     else if (b <= 1970 && e >= 1970)
@@ -110,8 +121,6 @@ ConstituentSet::ConstituentSet (const SafeVector<Constituent> &constituents,
       currentYear = (b+e)/2;
   }
 
-  amplitudes.resize (length);
-  phases.resize     (length);
   changeYear (currentYear);
 }
 
@@ -123,7 +132,7 @@ void ConstituentSet::setUnits (Units::PredictionUnits units) {
 
 
 const Units::PredictionUnits ConstituentSet::predictUnits () const {
-  Units::PredictionUnits temp (_constituents[0].amplitude.Units());
+  Units::PredictionUnits temp (_constituents[0].c.amplitude.Units());
   if (Units::isCurrent(temp))
     return temp;
   return preferredLengthUnits;
@@ -154,15 +163,17 @@ const Amplitude ConstituentSet::tideDerivativeMax (unsigned deriv) const {
 void ConstituentSet::changeYear (Year newYear) {
   currentYear = newYear;
 
-  for (unsigned i=0; i<length; ++i) {
-
+  SafeVector<OptimizedConstituent>::iterator itr;
+  for (itr = _constituents.begin();
+    _constituents.end() != itr; ++itr)
+  {
     // Apply node factor.  (Implicit conversion to PredictionValue.)
-    amplitudes[i] = _constituents[i].amplitude *
-		    _constituents[i].nod(currentYear);
+    itr->a = itr->c.amplitude *
+      itr->c.nod(currentYear);
 
     // Apply equilibrium argument.  Recall that phases have been pre-negated
     // per -k'.
-    phases[i] = _constituents[i].phase + _constituents[i].arg(currentYear);
+    itr->p = itr->c.phase + itr->c.arg(currentYear);
   }
 
   epoch     = Timestamp (currentYear);
@@ -254,11 +265,17 @@ const PredictionValue ConstituentSet::tideDerivative (Interval sinceEpoch,
 						      unsigned deriv) {
   PredictionValue dt_tide;
   Angle tempd (Units::radians, M_PI / 2.0 * deriv);
-  for (unsigned a=0; a<length; ++a) {
-    PredictionValue term (amplitudes[a] *
-      cos(tempd + _constituents[a].speed * sinceEpoch + phases[a]));
+  
+  SafeVector<OptimizedConstituent>::iterator itr;
+  for (itr = _constituents.begin();
+    _constituents.end() != itr; ++itr)
+  {
+    PredictionValue term (itr->a * 
+      cos(tempd + itr->c.speed * sinceEpoch + itr->p));
     for (int b = deriv; b > 0; --b)
-      term *= _constituents[a].speed.radiansPerSecond();
+    {
+      term *= itr->c.speed.radiansPerSecond();
+    }
     dt_tide += term;
   }
   return dt_tide;

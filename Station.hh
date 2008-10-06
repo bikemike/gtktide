@@ -53,7 +53,7 @@ public:
            const Dstr &note_,
            CurrentBearing minCurrentBearing_,
            CurrentBearing maxCurrentBearing_,
-           const MetaFieldVector &metadata);
+           const MetaFields &metadata);
 
   virtual ~Station();
 
@@ -186,11 +186,13 @@ public:
                     unsigned howMany);
 
 
+  const Dstr&  getMetaValue(const Dstr& name);
+
 protected:
 
   const StationRef &    _stationRef;
   ConstituentSet        _constituents;
-  const MetaFieldVector _metadata;
+  const MetaFields    _metadata;
 
 
   // To get all tide events falling between t1 and t2, you have to
@@ -289,5 +291,43 @@ private:
   // (Default copy constructor is used inside of clone().)
   Station &operator= (const Station &);
 };
+
+
+// Meta Field Names
+#define METAFIELD_NAME                   "Name"
+#define METAFIELD_IN_FILE                "In file"
+#define METAFIELD_LEGALESE               "Legalese"
+#define METAFIELD_STATION_ID_CONTEXT     "Station ID context"
+#define METAFIELD_STATION_ID             "Station ID"
+#define METAFIELD_DATE_IMPORTED          "Date imported"
+#define METAFIELD_COORDINATES            "Coordinates"
+#define METAFIELD_COUNTRY                "Country"
+#define METAFIELD_TIME_ZONE              "Time zone"
+#define METAFIELD_NATIVE_UNITS           "Native units"
+#define METAFIELD_FLOOD_DIRECTION        "Flood direction"
+#define METAFIELD_EBB_DIRECTION          "Ebb direction"
+#define METAFIELD_SOURCE                 "Source"
+#define METAFIELD_RESTRICTION            "Restriction"
+#define METAFIELD_COMMENTS               "Comments"
+#define METAFIELD_NOTES                  "Notes"
+#define METAFIELD_TYPE                   "Type"
+#define METAFIELD_MERIDIAN               "Meridian"
+#define METAFIELD_DATUM                  "Datum"
+#define METAFIELD_MONTHS_ON_STATION      "Months on station"
+#define METAFIELD_LAST_DATE_ON_STATION   "Last date on station"
+#define METAFIELD_EXPIRATION             "Expiration"
+#define METAFIELD_CONFIDENCE             "Confidence"
+#define METAFIELD_REFERENCE              "Reference"
+#define METAFIELD_MIN_TIME_ADD           "Min time add"
+#define METAFIELD_MIN_LEVEL_ADD          "Min level add"
+#define METAFIELD_MIN_LEVEL_MULT         "Min level mult"
+#define METAFIELD_MAX_TIME_ADD           "Max time add"
+#define METAFIELD_MAX_LEVEL_ADD          "Max level add"
+#define METAFIELD_MAX_LEVEL_MULT         "Max level mult"
+#define METAFIELD_FLOOD_BEGINS           "Flood begins"
+#define METAFIELD_EBB_BEGINS             "Ebb begins"
+
+
+
 
 // Cleanup2006 Done

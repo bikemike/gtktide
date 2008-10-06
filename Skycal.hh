@@ -16,7 +16,14 @@ namespace Skycal {
   // eventTime and eventType are set to the next (sun/moon) rise or
   // set event following time t.  Nothing else in tideEvent_out is
   // changed.
-  enum RiseSetType {solar, lunar};
+  enum RiseSetType {solar, twilight, lunar};
+
+  // finds next sun (solar or twilight) event
+  void findNextSunEvent (Timestamp t,
+                          const Coordinates &c,
+                          TideEvent &tideEvent_out);
+
+  // finds next event of specific type
   void findNextRiseOrSet (Timestamp t,
                           const Coordinates &c,
                           RiseSetType riseSetType,
@@ -24,6 +31,9 @@ namespace Skycal {
 
   // Returns true if sun is up at time t.
   const bool sunIsUp (Timestamp t, const Coordinates &c);
+
+  // Returns true if in twilight time
+  const bool isTwilight (Timestamp t, const Coordinates &c);
 
 }
 

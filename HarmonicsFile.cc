@@ -107,6 +107,7 @@ StationRef * const HarmonicsFile::getNextStationRef () {
   StationRef *sr = new StationRef (_filename,
                                    i,
                                    (char *)rec.name,
+                                   (const char*)get_country(rec.country),
         ((rec.latitude != 0.0 || rec.longitude != 0.0) ?
         Coordinates(rec.latitude, rec.longitude) : Coordinates()),
                                    (char *)get_tzfile(rec.tzfile),
@@ -115,7 +116,7 @@ StationRef * const HarmonicsFile::getNextStationRef () {
 }
 
 
-static void parse_xfields (MetaFieldVector &metadata,
+static void parse_xfields (MetaFields &metadata,
                            constCharPointer xfields) {
   assert (xfields);
   Dstr x (xfields);
@@ -130,7 +131,7 @@ static void parse_xfields (MetaFieldVector &metadata,
       }
     } else {
       if (!(name.isNull())) {
-        metadata.push_back (MetaField (name, value));
+        metadata.insert (MetaField (name, value));
         name = (char *)NULL;
         value = (char *)NULL;
       }
@@ -144,7 +145,7 @@ static void parse_xfields (MetaFieldVector &metadata,
     x.getline (linebuf);
   }
   if (!(name.isNull()))
-    metadata.push_back (MetaField (name, value));
+    metadata.insert (MetaField (name, value));
 }
 
 
@@ -157,34 +158,34 @@ static const Units::PredictionUnits levelAddUnits (const TIDE_RECORD &rec) {
 }
 
 
-static void appendOffsetsMetadata (MetaFieldVector &metadata,
+static void appendOffsetsMetadata (MetaFields &metadata,
 				   const TIDE_RECORD &rec) {
   char tmp[80];
   Units::PredictionUnits lu = levelAddUnits(rec);
 
-  metadata.push_back (MetaField ("Min time add",
+  metadata.insert (MetaField (METAFIELD_MIN_TIME_ADD,
     rec.min_time_add ? ret_time_neat (rec.min_time_add) : "NULL"));
   sprintf (tmp, "%+2.2f %s", rec.min_level_add, Units::shortName(lu));
-  metadata.push_back (MetaField ("Min level add",
+  metadata.insert (MetaField (METAFIELD_MIN_LEVEL_ADD,
     rec.min_level_add ? tmp : "NULL"));
   sprintf (tmp, "%0.3f", rec.min_level_multiply);
-  metadata.push_back (MetaField ("Min level mult",
+  metadata.insert (MetaField (METAFIELD_MIN_LEVEL_MULT,
     rec.min_level_multiply > 0.0 ? tmp : "NULL"));
 
-  metadata.push_back (MetaField ("Max time add",
+  metadata.insert (MetaField (METAFIELD_MAX_TIME_ADD,
     rec.max_time_add ? ret_time_neat (rec.max_time_add) : "NULL"));
   sprintf (tmp, "%+2.2f %s", rec.max_level_add, Units::shortName(lu));
-  metadata.push_back (MetaField ("Max level add",
+  metadata.insert (MetaField (METAFIELD_MAX_LEVEL_ADD,
     rec.max_level_add ? tmp : "NULL"));
   sprintf (tmp, "%0.3f", rec.max_level_multiply);
-  metadata.push_back (MetaField ("Max level mult",
+  metadata.insert (MetaField (METAFIELD_MAX_LEVEL_MULT,
     rec.max_level_multiply > 0.0 ? tmp : "NULL"));
 
   if (Units::isCurrent(lu)) {
-    metadata.push_back (MetaField ("Flood begins",
+    metadata.insert (MetaField (METAFIELD_FLOOD_BEGINS,
       rec.flood_begins == NULLSLACKOFFSET ? "NULL"
 	: ret_time_neat (rec.flood_begins)));
-    metadata.push_back (MetaField ("Ebb begins",
+    metadata.insert (MetaField (METAFIELD_EBB_BEGINS,
       rec.ebb_begins == NULLSLACKOFFSET ? "NULL"
 	: ret_time_neat (rec.ebb_begins)));
   }
@@ -195,81 +196,81 @@ static void appendOffsetsMetadata (MetaFieldVector &metadata,
 // current is made based on units at reference station.  Units are
 // flattened for levelAdd offsets.
 static void buildMetadata (const StationRef &sr,
-                           MetaFieldVector &metadata,
+                           MetaFields &metadata,
                            const TIDE_RECORD &rec,
                            Units::PredictionUnits refStationNativeUnits,
                            CurrentBearing minCurrentBearing,
                            CurrentBearing maxCurrentBearing) {
   Dstr tmpbuf;
 
-  metadata.push_back (MetaField ("Name", sr.name));
-  metadata.push_back (MetaField ("In file", sr.harmonicsFileName));
+  metadata.insert (MetaField (METAFIELD_NAME, sr.name));
+  metadata.insert (MetaField (METAFIELD_IN_FILE, sr.harmonicsFileName));
   if (rec.legalese)
-    metadata.push_back (MetaField ("Legalese", get_legalese(rec.legalese)));
+    metadata.insert (MetaField (METAFIELD_LEGALESE, get_legalese(rec.legalese)));
   if (rec.station_id_context[0])
-    metadata.push_back (MetaField ("Station ID context",
+    metadata.insert (MetaField (METAFIELD_STATION_ID_CONTEXT,
 				     rec.station_id_context));
   if (rec.station_id[0])
-    metadata.push_back (MetaField ("Station ID", rec.station_id));
+    metadata.insert (MetaField (METAFIELD_STATION_ID, rec.station_id));
   if (rec.date_imported)
-    metadata.push_back (MetaField ("Date imported",
+    metadata.insert (MetaField (METAFIELD_DATE_IMPORTED,
 				    ret_date(rec.date_imported)));
   sr.coordinates.print (tmpbuf);
-  metadata.push_back (MetaField ("Coordinates", tmpbuf));
-  metadata.push_back (MetaField ("Country", get_country(rec.country)));
-  metadata.push_back (MetaField ("Time zone", sr.timezone));
-  metadata.push_back (MetaField ("Native units",
+  metadata.insert (MetaField (METAFIELD_COORDINATES, tmpbuf));
+  metadata.insert (MetaField (METAFIELD_COUNTRY, get_country(rec.header.country)));
+  metadata.insert (MetaField (METAFIELD_TIME_ZONE, sr.timezone));
+  metadata.insert (MetaField (METAFIELD_NATIVE_UNITS,
                                  Units::longName(refStationNativeUnits)));
   if (!(maxCurrentBearing.isNull())) {
     maxCurrentBearing.print (tmpbuf);
-    metadata.push_back (MetaField ("Flood direction", tmpbuf));
+    metadata.insert (MetaField (METAFIELD_FLOOD_DIRECTION, tmpbuf));
   }
   if (!(minCurrentBearing.isNull())) {
     minCurrentBearing.print (tmpbuf);
-    metadata.push_back (MetaField ("Ebb direction", tmpbuf));
+    metadata.insert (MetaField (METAFIELD_EBB_DIRECTION, tmpbuf));
   }
   if (rec.source[0])
-    metadata.push_back (MetaField ("Source", rec.source));
-  metadata.push_back (MetaField ("Restriction",
+    metadata.insert (MetaField (METAFIELD_SOURCE, rec.source));
+  metadata.insert (MetaField (METAFIELD_RESTRICTION,
                                  get_restriction(rec.restriction)));
   if (rec.comments[0])
-    metadata.push_back (MetaField ("Comments", rec.comments));
+    metadata.insert (MetaField (METAFIELD_COMMENTS, rec.comments));
   if (rec.notes[0])
-    metadata.push_back (MetaField ("Notes", rec.notes));
+    metadata.insert (MetaField (METAFIELD_NOTES, rec.notes));
   parse_xfields (metadata, rec.xfields);
 
   switch (rec.header.record_type) {
   case REFERENCE_STATION:
-    metadata.push_back (MetaField ("Type",
+    metadata.insert (MetaField (METAFIELD_TYPE,
       (Units::isCurrent(refStationNativeUnits) ?
         (Units::isHydraulicCurrent(refStationNativeUnits) ?
 	  "Reference station, hydraulic current" :
  	  "Reference station, current")
         : "Reference station, tide")));
-    metadata.push_back (MetaField ("Meridian",
+    metadata.insert (MetaField (METAFIELD_MERIDIAN,
                                    ret_time_neat(rec.zone_offset)));
     if (!Units::isCurrent(refStationNativeUnits))
-      metadata.push_back (MetaField ("Datum", get_datum(rec.datum)));
+      metadata.insert (MetaField (METAFIELD_DATUM, get_datum(rec.datum)));
     if (rec.months_on_station)
-      metadata.push_back (MetaField ("Months on station",
+      metadata.insert (MetaField (METAFIELD_MONTHS_ON_STATION,
                                      rec.months_on_station));
     if (rec.last_date_on_station)
-      metadata.push_back (MetaField ("Last date on station",
+      metadata.insert (MetaField (METAFIELD_LAST_DATE_ON_STATION,
 				      ret_date(rec.last_date_on_station)));
     if (rec.expiration_date)
-      metadata.push_back (MetaField ("Expiration",
+      metadata.insert (MetaField (METAFIELD_EXPIRATION,
 				      ret_date(rec.expiration_date)));
-    metadata.push_back (MetaField ("Confidence", rec.confidence));
+    metadata.insert (MetaField (METAFIELD_CONFIDENCE, rec.confidence));
     break;
 
   case SUBORDINATE_STATION:
-    metadata.push_back (MetaField ("Type",
+    metadata.insert (MetaField (METAFIELD_TYPE,
       (Units::isCurrent(refStationNativeUnits) ?
         (Units::isHydraulicCurrent(refStationNativeUnits) ?
 	  "Subordinate station, hydraulic current" :
  	  "Subordinate station, current")
         : "Subordinate station, tide")));
-    metadata.push_back (MetaField ("Reference",
+    metadata.insert (MetaField (METAFIELD_REFERENCE,
                                    get_station(rec.header.reference_station)));
     appendOffsetsMetadata (metadata, rec);
     break;
@@ -360,7 +361,7 @@ Station * const HarmonicsFile::getStation (const StationRef &stationRef) {
   switch (rec.header.record_type) {
   case REFERENCE_STATION:
     {
-      MetaFieldVector metadata;
+      MetaFields metadata;
       buildMetadata (stationRef,
                      metadata,
                      rec,
@@ -385,7 +386,7 @@ Station * const HarmonicsFile::getStation (const StationRef &stationRef) {
       Units::PredictionUnits refStationNativeUnits
         (Units::parse(get_level_units(referenceStationRec.level_units)));
 
-      MetaFieldVector metadata;
+      MetaFields metadata;
       buildMetadata (stationRef,
                      metadata,
                      rec,

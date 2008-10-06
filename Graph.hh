@@ -40,7 +40,6 @@ public:
 	Rectangle() : x(0), y(0), width(0), height(0){}
 	bool intersects(const Rectangle& other, Rectangle* intersectRect = NULL) const
 	{
-		bool bIntersect = false;
 		Rectangle tmpRect;
 		Rectangle* pRect = &tmpRect; 
 
@@ -54,12 +53,18 @@ public:
 		pRect->width = std::min(x + width, other.x + other.width) - pRect->x;
 		pRect->height = std::min(y + height, other.y + other.height) - pRect->y;
 
-		if (0 < pRect->width && 0 < pRect->height)
-		{
-			bIntersect = true;
-		}
-		return bIntersect;
+		return pRect->isValid();
 	}
+
+	bool isValid() const
+	{
+		return (0 < width && 0 < height);
+	}
+
+	int getLeft(){return x;}
+	int getRight(){return x + width;}
+	int getTop(){return y;}
+	int getBottom(){return y+height;}
 
 	int x;
 	int y;
@@ -84,7 +89,10 @@ public:
 
 	void addRectangle(const Rectangle& r)
 	{
-		m_vectRectangles.push_back(r);
+		if (r.isValid())
+		{
+			m_vectRectangles.push_back(r);
+		}
 	}
 
 	bool intersects(const Rectangle& r) const
@@ -99,6 +107,106 @@ public:
 		return bIntersects;
 	}
 
+	Region intersect (const Rectangle& rect) const
+	{
+		return intersect(Region(rect));
+	}
+
+	Region intersect (const Region& reg) const
+	{
+		Region r;
+		RectVect::const_iterator itr;
+		RectVect::const_iterator itr2;
+		for (itr = m_vectRectangles.begin(); 
+			m_vectRectangles.end() != itr; ++itr)
+		{
+			for (itr2 = reg.m_vectRectangles.begin(); 
+				reg.m_vectRectangles.end() != itr2; ++itr2)
+			{
+				Rectangle rect;
+				if (itr->intersects(*itr2, &rect))
+				{
+					r.addRectangle(rect);
+				}
+			}
+		}
+		return r;
+	}
+
+	Region subtract (const Rectangle& rect) const
+	{
+		return subtract(Region(rect));
+	}
+	Region subtract( const Region& reg) const
+	{
+		Region newReg = *this;
+
+		RectVect::iterator itr;
+		RectVect::const_iterator itr2;
+		for (itr = newReg.m_vectRectangles.begin(); 
+			newReg.m_vectRectangles.end() != itr;) // ++itr done at end of loop
+		{
+			bool bIntersects = false;
+
+			for (itr2 = reg.m_vectRectangles.begin(); 
+				reg.m_vectRectangles.end() != itr2; ++itr2)
+			{
+				Rectangle intersect;
+				if (itr2->intersects(*itr, &intersect))
+				{
+					int nRects = 4;
+					Rectangle r[nRects];
+
+					r[0].x      = itr->x;
+					r[0].width  = intersect.x - itr->x; 
+					r[0].y      = itr->y;
+					r[0].height = itr->height;
+
+					r[1].x      = intersect.x;
+					r[1].width  = intersect.width; 
+					r[1].y      = itr->y;
+					r[1].height = intersect.y - itr->y;
+
+					r[2].x      = intersect.x;
+					r[2].width  = intersect.width; 
+					r[2].y      = intersect.y + intersect.height;
+					r[2].height = (itr->y + itr->height) - r[2].y;
+
+					r[3].x      = intersect.x + intersect.width;
+					r[3].width  = (itr->x + itr->width) - r[3].x; 
+					r[3].y      = itr->y;
+					r[3].height = itr->height;
+
+					// erase the intersecting rect
+					newReg.m_vectRectangles.erase(itr);
+					for (int i = 0 ; i < nRects; ++i)
+					{
+						// addRectangle will only
+						// add the rect if it's valid
+						newReg.addRectangle(r[i]);
+					}
+					bIntersects = true;
+
+					// now break and start over to make sure
+					// none of the other rects intersect
+					// with the newly added ones
+					itr = newReg.m_vectRectangles.begin();
+					break;
+				}
+			}
+
+			if (!bIntersects)
+			{
+				++itr;
+			}
+		}
+		return newReg;
+	}
+
+	bool isEmpty() const
+	{
+		return m_vectRectangles.empty();
+	}
 
 	Rectangle getBoundingRect() const
 	{
@@ -128,8 +236,13 @@ public:
 		return Rectangle(minx, miny, maxx - minx, maxy - miny);
 	}
 
-private:
 	typedef std::vector<Rectangle> RectVect;
+	RectVect getRectangles() const
+	{
+		return m_vectRectangles;
+	}
+
+private:
 	RectVect m_vectRectangles;
 };
 }
@@ -140,21 +253,35 @@ public:
   Graph (unsigned xSize, unsigned ySize, GraphStyle style = normal);
   virtual ~Graph();
 
-	Station* m_pStation;
-	Timestamp m_tsStartTime;
 	Graph(GraphStyle style = normal);
 
 	void setSize(unsigned xSize, unsigned ySize);
 
 	void setNominalStartTime(Timestamp nominalStartTime);
+
+	void setDrawTitle(bool bDrawTitle);
+	void setDrawTitleOverGraph(bool bOver);
+	void setDrawDepthOverGraph(bool bOver);
+	void setDrawHoursOverGraph(bool bOver);
+
 	Shape::Rectangle getTitleAreaRect();
 	Shape::Rectangle getDepthAreaRect();
 
 	void setStation(Station* station);
+	Station* getStation(){return m_pStation;}
 
 	void drawTides(const Shape::Region& clipRegion);
 
 	void drawTides (Station *station,
+		Timestamp nominalStartTime,
+		const Shape::Region& clipRegion,
+		Angle *angle = NULL);
+
+	void drawTitleArea(Station* station,
+	   Timestamp nominalStartTime,
+	   const Shape::Region& clipRegion);
+
+	void drawTidesFull (Station *station,
 		Timestamp nominalStartTime,
 		const Shape::Region& clipRegion,
 		Angle *angle = NULL);
@@ -173,6 +300,7 @@ public:
   Interval getIntervalOffsetAtPosition(unsigned xOffset);
   Interval getIntervalOffsetAtPosition(Station *station, unsigned xOffset);
 
+  void clearTideEventsOrganizer(){m_TideEventOrganizer.clear();}
 
   // angle is a kludge to help out the tide clock icon.
   void drawTides (Station *station,
@@ -193,6 +321,15 @@ protected:
 
   const GraphStyle _style;
   unsigned _xSize, _ySize;
+
+  bool m_bDrawTitle;
+  bool m_bDrawTitleOverGraph;
+  bool m_bDrawHoursOverGraph;
+  bool m_bDrawDepthOverGraph;
+  Timestamp m_tsStartTime;
+  Station* m_pStation;
+
+  TideEventsOrganizer m_TideEventOrganizer;
 
   // Margin left at top and bottom of tide graphs when scaling tides;
   // how much "water" at lowest tide; how much "sky" at highest tide.

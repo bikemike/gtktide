@@ -20,7 +20,7 @@
 
 namespace Colors {
 
-  const unsigned numColors = 10U;
+  const unsigned numColors = 11U;
 
   enum Colorchoice {background=0,
                     foreground=1,
@@ -31,7 +31,8 @@ namespace Colors {
                     flood=6,
                     ebb=7,
                     datum=8,
-                    msl=9};
+                    msl=9,
+                    twilight=10};
 
   extern constString colorarg[numColors]; // Wants to be [Colorchoice]
 

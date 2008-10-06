@@ -27,6 +27,7 @@ public:
   StationRef (const Dstr &harmonicsFileName_,
               uint32_t recordNumber_,
               const Dstr &name_,
+              const Dstr &country_,
               const Coordinates &coordinates_,
               const Dstr &timezone_,
               bool isReferenceStation_);
@@ -34,6 +35,7 @@ public:
   const Dstr &       harmonicsFileName;
   const uint32_t     recordNumber;
   const Dstr         name;
+  const Dstr         country;
   const Coordinates  coordinates;
   const Dstr         timezone;
   const bool         isReferenceStation;

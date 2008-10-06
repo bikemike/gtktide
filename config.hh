@@ -41,6 +41,7 @@ static constString flooddefcolor  = "Blue";
 static constString ebbdefcolor    = "SeaGreen";
 static constString datumdefcolor  = "white";
 static constString msldefcolor    = "yellow";
+static constString twidefcolor    = "green";
 
 // Default graph width and height (pixels), and aspect
 static const unsigned defgwidth  = 960U;

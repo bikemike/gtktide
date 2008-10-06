@@ -20,10 +20,39 @@
 #include "common.hh"
 
 
-MetaField::MetaField (const Dstr &name_, const Dstr &value_):
-  name(name_),
-  value(value_) {
-  value.trim();
+MetaField::MetaField (const Dstr &name_, const Dstr &value_) :
+	MetaFieldPair(name_, Dstr(value_).trim())
+{}
+
+
+void MetaFields::insert(const MetaField &field)
+{
+	m_vectSortOrder.push_back(field.first);
+	m_mapMetaFields.insert(field);
+
+
 }
+
+unsigned MetaFields::size() const
+{
+	return m_vectSortOrder.size();
+}
+
+const Dstr &MetaFields::operator [] (unsigned index) const
+{
+	assert (index < m_vectSortOrder.size());
+	return m_vectSortOrder[index];
+}
+
+const Dstr &MetaFields::operator [] (const Dstr &name) const
+{
+	MetaFieldMap::const_iterator itr = m_mapMetaFields.find(name);
+	if (m_mapMetaFields.end() != itr)
+	{
+		return itr->second;
+	}
+	return m_strEmpty;
+}
+
 
 // Cleanup2006 Done

@@ -16,17 +16,31 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <map>
+#include <vector>
 
-struct MetaField {
+typedef std::map<const Dstr, const Dstr>  MetaFieldMap;
+typedef std::pair<const Dstr, const Dstr> MetaFieldPair;
+
+
+struct MetaField : MetaFieldPair {
 
   // The constructor trims whitespace from value_.
   MetaField (const Dstr &name_, const Dstr &value_);
 
-  // Making these const breaks assignment, which breaks SafeVector.
-  Dstr name;
-  Dstr value;
 };
 
-typedef SafeVector<MetaField> MetaFieldVector;
+struct MetaFields 
+{
+	void insert(const MetaField &field);
+
+	MetaFieldMap             m_mapMetaFields;
+	std::vector<Dstr>        m_vectSortOrder;
+	Dstr                     m_strEmpty;
+
+	unsigned size() const;
+	const Dstr &operator [] (unsigned index) const;
+	const Dstr &operator [] (const Dstr &name) const;
+};
 
 // Cleanup2006 Done

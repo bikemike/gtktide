@@ -31,12 +31,14 @@ Station * const StationRef::load() const {
 StationRef::StationRef (const Dstr &harmonicsFileName_,
                         uint32_t recordNumber_,
                         const Dstr &name_,
+                        const Dstr &country_,
                         const Coordinates &coordinates_,
                         const Dstr &timezone_,
                         bool isReferenceStation_):
   harmonicsFileName(harmonicsFileName_),
   recordNumber(recordNumber_),
   name(name_),
+  country(country_),
   coordinates(coordinates_),
   timezone(timezone_),
   isReferenceStation(isReferenceStation_) {}

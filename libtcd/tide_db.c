@@ -360,6 +360,7 @@ typedef struct
     NV_INT32                lon;
     NV_U_BYTE               record_type;
     NV_CHAR                 *name;
+    NV_INT16                country;
 } TIDE_INDEX;
 
 
@@ -435,7 +436,7 @@ void dump_tide_record (TIDE_RECORD *rec)
     fprintf (stderr, "Tzfile = %s\n", get_tzfile (rec->header.tzfile));
     fprintf (stderr, "Name = %s\n", rec->header.name);
 
-    fprintf (stderr, "Country = %s\n", get_country (rec->country));
+    fprintf (stderr, "Country = %s\n", get_country (rec->header.country));
     fprintf (stderr, "Source = %s\n", rec->source);
     fprintf (stderr, "Restriction = %s\n", get_restriction (rec->restriction));
     fprintf (stderr, "Comments = %s\n", rec->comments);
@@ -930,6 +931,7 @@ NV_BOOL get_partial_tide_record (NV_INT32 num, TIDE_STATION_HEADER *rec)
     rec->longitude = (NV_FLOAT64) tindex[num].lon / hd.longitude_scale;
     rec->reference_station = tindex[num].reference_station;
     rec->tzfile = tindex[num].tzfile;
+    rec->country = tindex[num].country;
     strcpy (rec->name, tindex[num].name);
 
     current_index = num;
@@ -2956,6 +2958,9 @@ TIDE_RECORD *rec, NV_U_INT32 *pos)
 	signed_bit_unpack (buf, *pos, hd.station_bits);
     *pos += hd.station_bits;
 
+    rec->header.country = bit_unpack (buf, *pos, hd.country_bits);
+    *pos += hd.country_bits;
+
     assert (*pos <= bufsize*8);
 }
 
@@ -2997,7 +3002,7 @@ static NV_INT32 read_partial_tide_record (NV_INT32 num, TIDE_RECORD *rec)
 
     maximum_possible_size = hd.record_size_bits + hd.record_type_bits +
         hd.latitude_bits + hd.longitude_bits + hd.tzfile_bits +
-        (ONELINER_LENGTH * 8) + hd.station_bits;
+        (ONELINER_LENGTH * 8) + hd.station_bits + hd.country_bits;
     maximum_possible_size = bits2bytes (maximum_possible_size);
 
     if ((buf = (NV_U_BYTE *) calloc (maximum_possible_size, sizeof (NV_U_BYTE))) == NULL)
@@ -3592,6 +3597,7 @@ database should be rebuilt from the original data if possible.\n");
         tindex[i].tzfile = rec.header.tzfile;
         tindex[i].lat = NINT (rec.header.latitude * hd.latitude_scale);
         tindex[i].lon = NINT (rec.header.longitude * hd.longitude_scale);
+		tindex[i].country = rec.header.country;
 
         if ((tindex[i].name =
             (NV_CHAR *) calloc (strlen (rec.header.name) + 1,
@@ -4214,7 +4220,7 @@ static NV_BOOL check_tide_record (TIDE_RECORD *rec) {
     ret = NVFalse;
   }
 
-  if (rec->country < 0 || rec->country >= (NV_INT32)hd.pub.countries) {
+  if (rec->header.country < 0 || rec->header.country >= (NV_INT32)hd.pub.countries) {
     fprintf (stderr, "libtcd error: bad country in tide record\n");
     ret = NVFalse;
   }
@@ -4567,7 +4573,7 @@ NV_U_INT32 *bufsize) {
   bit_pack (buf, pos, hd.station_bits, rec->header.reference_station);
   pos += hd.station_bits;
 
-  bit_pack (buf, pos, hd.country_bits, rec->country);
+  bit_pack (buf, pos, hd.country_bits, rec->header.country);
   pos += hd.country_bits;
 
   pack_string (buf, &pos, clip_string(rec->source));
@@ -4825,9 +4831,6 @@ TIDE_RECORD *rec) {
 
     /*  "pos" is the bit position within the buffer "buf".  */
 
-    rec->country = bit_unpack (buf, pos, hd.country_bits);
-    pos += hd.country_bits;
-
     /* pedigree */
     pos += hd.pedigree_bits;
 
@@ -4948,9 +4951,6 @@ TIDE_RECORD *rec) {
 
     /************************* TCD V2 *****************************/
   case 2:
-    rec->country = bit_unpack (buf, pos, hd.country_bits);
-    pos += hd.country_bits;
-
     unpack_string (buf, bufsize, &pos, rec->source, ONELINER_LENGTH, "source field");
 
     rec->restriction = bit_unpack (buf, pos, hd.restriction_bits);
@@ -5181,6 +5181,7 @@ NV_BOOL add_tide_record (TIDE_RECORD *rec, DB_HEADER_PUBLIC *db)
             hd.latitude_scale);
         tindex[rec->header.record_number].lon = NINT (rec->header.longitude *
             hd.longitude_scale);
+        tindex[rec->header.record_number].country = rec->header.country;
 
 
         if ((tindex[rec->header.record_number].name =
@@ -5414,6 +5415,7 @@ NV_BOOL update_tide_record (NV_INT32 num, TIDE_RECORD *rec, DB_HEADER_PUBLIC *db
         tindex[num].tzfile = rec->header.tzfile;
         tindex[num].lat = NINT (rec->header.latitude * hd.latitude_scale);
         tindex[num].lon = NINT (rec->header.longitude * hd.longitude_scale);
+        tindex[num].country = rec->header.country;
 
         /* AH maybe? */
         /* DWF: agree, same size record does not imply that name length

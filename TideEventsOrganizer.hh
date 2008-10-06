@@ -25,6 +25,10 @@ typedef std::multimap<const Timestamp, TideEvent>::iterator
                                    TideEventsIterator;
 typedef std::multimap<const Timestamp, TideEvent>::reverse_iterator
                                    TideEventsReverseIterator;
+typedef std::multimap<const Timestamp, TideEvent>::const_iterator
+                                   TideEventsConstIterator;
+typedef std::multimap<const Timestamp, TideEvent>::const_reverse_iterator
+                                   TideEventsReverseConstIterator;
 
 // "STL containers are not intended to be used as base classes (their
 // destructors are deliberately non-virtual).  Deriving from a

@@ -28,7 +28,7 @@ public:
                       const Dstr &note_,
                       CurrentBearing minCurrentBearing_,
 		      CurrentBearing maxCurrentBearing_,
-                      const MetaFieldVector &metadata,
+                      const MetaFields &metadata,
                       const HairyOffsets &offsets);
 
   // All these public methods are replacing virtual methods of

@@ -145,6 +145,13 @@ LEGALITIES:
 // always at sea level :-)
 static const double riseAltitude (-0.83);
 
+// twilightAltitude - angle at which twilight begins/ends
+// -6  degrees = civil twilight
+// -12 degrees = nautical twilight
+// -15 degrees = amateur astronomical twilight
+// -18 degrees = astronomical twilight
+static const double twilightAltitude (-6 );
+
 #define DEG_IN_RADIAN     57.2957795130823
 #define HRS_IN_RADIAN     3.819718634
 #define SEC_IN_DAY        86400.
@@ -887,7 +894,7 @@ void Skycal::findNextMoonPhase (Timestamp t,
 
 // Set lunar to true for moonrise/set.
 static void
-find_next_rise_or_set (double &jd, double lat, double longit, bool lunar,
+find_next_rise_or_set (double &jd, double lat, double longit, Skycal::RiseSetType riseSetType,
 bool &is_rise) {
   // Move ahead by precision interval to avoid snagging.
   jd += Global::eventPrecisionJD;
@@ -895,15 +902,17 @@ bool &is_rise) {
   double jdorig = jd;
   double inc = 1.0 / 6.0; // 4 hours
 
+  double alt = (riseSetType == Skycal::twilight) ? twilightAltitude : riseAltitude;
+
   // First we want to know what we are looking for.
-  bool looking_for = (altitude (jdorig, lat, longit, lunar) < riseAltitude);
+  bool looking_for = (altitude (jdorig, lat, longit, (riseSetType == Skycal::lunar)) < alt);
 
   // Now give it a decent try.  Because jd_alt is so unpredictable,
   // we can even find things out of order (which is one reason we need
   // to know what we're looking for).
   double jdlooper = jdorig;
   do {
-    jd = jd_alt (riseAltitude, jdlooper, lat, longit, lunar, is_rise);
+    jd = jd_alt (alt, jdlooper, lat, longit, (riseSetType == Skycal::lunar), is_rise);
     jdlooper += inc;
   // Loop either on error return (which is a negative number), or if we
   // found an event in the wrong direction, or the wrong kind of event.
@@ -912,10 +921,25 @@ bool &is_rise) {
            (is_rise != looking_for));
 }
 
+void Skycal::findNextSunEvent (Timestamp t,
+                                const Coordinates &c,
+                                TideEvent &tideEvent_out) {
+  TideEvent sun;
+  TideEvent _twilight;
+
+  findNextRiseOrSet(t, c,  solar, sun);
+  findNextRiseOrSet(t, c,  twilight, _twilight);
+
+  if (sun.eventTime < _twilight.eventTime)
+    tideEvent_out = sun;
+  else
+    tideEvent_out = _twilight;
+
+}
 
 void Skycal::findNextRiseOrSet (Timestamp t,
                                 const Coordinates &c,
-			        RiseSetType riseSetType,
+                                RiseSetType riseSetType,
                                 TideEvent &tideEvent_out) {
   assert (!(c.isNull()));
   bool isRise;
@@ -925,15 +949,39 @@ void Skycal::findNextRiseOrSet (Timestamp t,
   find_next_rise_or_set (jd,
                          c.lat(),
                          -(c.lng())/15.0,
-                         (riseSetType==lunar),
+                         riseSetType,
                          isRise);
   tideEvent_out.eventTime = jd;
   if (isRise)
-    tideEvent_out.eventType = ((riseSetType == lunar) ? TideEvent::moonrise
-                                                      : TideEvent::sunrise);
+  {
+    switch (riseSetType)
+    {
+      case lunar:
+        tideEvent_out.eventType = TideEvent::moonrise;
+        break;
+      case twilight:
+        tideEvent_out.eventType = TideEvent::dawn;
+        break;
+      case solar:
+        tideEvent_out.eventType = TideEvent::sunrise;
+        break;
+    }
+  }
   else
-    tideEvent_out.eventType = ((riseSetType == lunar) ? TideEvent::moonset
-                                                      : TideEvent::sunset);
+  {
+    switch (riseSetType)
+    {
+      case lunar:
+        tideEvent_out.eventType = TideEvent::moonset;
+        break;
+      case twilight:
+        tideEvent_out.eventType = TideEvent::dusk;
+        break;
+      case solar:
+        tideEvent_out.eventType = TideEvent::sunset;
+        break;
+    }
+  }
 }
 
 
@@ -943,4 +991,8 @@ const bool Skycal::sunIsUp (Timestamp t, const Coordinates &c) {
   return (altitude (t.jd(), c.lat(), -(c.lng())/15.0, 0) >= riseAltitude);
 }
 
+const bool Skycal::isTwilight (Timestamp t, const Coordinates &c){
+  assert (!(c.isNull()));
+  return (altitude (t.jd(), c.lat(), -(c.lng())/15.0, 0) >= twilightAltitude);
+}
 // Cleanup2006 Cruft ThirdPartyCode WontFix

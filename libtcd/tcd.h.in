@@ -139,6 +139,7 @@ typedef struct
     NV_INT32                reference_station;
     NV_INT16                tzfile;
     NV_CHAR                 name[ONELINER_LENGTH];
+    NV_INT16                country;
 } TIDE_STATION_HEADER;
 
 
@@ -149,7 +150,6 @@ typedef struct
 {
     /* Common */
     TIDE_STATION_HEADER     header;
-    NV_INT16                country;
     NV_CHAR                 source[ONELINER_LENGTH];
     NV_U_BYTE               restriction;
     NV_CHAR                 comments[MONOLOGUE_LENGTH];

@@ -9,6 +9,8 @@
 
 #include "Graph.hh"
 
+#include "SubordinateStation.hh"
+
 
 
 #ifdef MAEMO
@@ -19,8 +21,12 @@
 #endif
 #include <libosso.h>
 #endif
+#include <map>
+#include <string>
 
 using namespace Shape;
+
+using namespace std;
 
 class GtkRect : public Rectangle
 {
@@ -48,6 +54,7 @@ static ParsedColor cachedColors[Colors::numColors]; // Wants to be [Colorchoice]
 
 class GtkTideWindowImpl;
 class gtkGraph;
+class DisclaimerDlg;
 
 class GtkTideWindow
 {
@@ -59,6 +66,10 @@ private:
 	GtkTideWindowImpl* m_pGtkTideWindowImpl;
 };
 
+typedef std::map<Dstr, StationRef*> MapLocationStation;
+typedef std::map<Dstr, MapLocationStation > MapAreaLocation;
+typedef std::map<Dstr, MapAreaLocation > MapCountryArea;
+
 class GtkTideWindowImpl
 {
 public:
@@ -68,16 +79,25 @@ public:
 	void StartTimeoutSmoothScroll();
 	void StopTimeoutSmoothScroll();
 	void StopTimeoutSmoothScrollSlowdown();
+	void LoadStations();
+
+	void SetStationRef(StationRef* stationRef);
+
+	MapCountryArea m_mapStationRefCache;
 
 	GtkWidget*       m_pWindow;
 	GtkWidget*       m_pMenubar;
 	GtkWidget*       m_pToolbar;
 	GtkWidget*       m_pDrawingArea;
 	GtkWidget*       m_pVBox;
-	GtkWidget*       m_pComboStations;
+	GtkWidget*       m_pComboRecent;
+	gulong           m_ulComboHandlerID;
 	GtkToolItem*     m_pToolItemStations;
 
 	GtkUIManager*    m_pUIManager;
+	GThreadPool*     m_pThreadPool;
+
+
 	//gui actions
 	static GtkActionEntry action_entries[];
 	static GtkToggleActionEntry action_entries_toggle[];
@@ -91,6 +111,8 @@ public:
 	bool             m_bMouseMoved;
 	gint             m_ScrollToOffset;
 
+	bool             m_bStationsLoaded;
+
 	guint            timeout_id_smooth_scroll;
 	guint            timeout_id_smooth_scroll_slowdown;
 
@@ -100,8 +122,380 @@ public:
 	osso_context_t*  osso_context;
 #endif
 
-	Graph*        m_pGraph;
+	Graph*           m_pGraph;
+	StationRef*      m_pStationRef;
+
 	
+};
+
+
+class DisclaimerDlg
+{
+public:
+	DisclaimerDlg(GtkTideWindowImpl* parent) : 
+		m_pParent(parent), m_bTextLoaded(false)
+	{
+		m_bLoaded = false;
+		m_pDialog = gtk_dialog_new_with_buttons ("Disclaimer",
+			GTK_WINDOW(m_pParent->m_pWindow),
+			GTK_DIALOG_DESTROY_WITH_PARENT,
+			"Dismiss",
+			GTK_RESPONSE_OK,
+			"Don't Show Again",
+			GTK_RESPONSE_CANCEL,
+			NULL);
+		gtk_window_set_default_size (GTK_WINDOW(m_pDialog),575,350);
+		m_pTextView     = gtk_text_view_new();
+		gtk_text_view_set_editable (GTK_TEXT_VIEW(m_pTextView), false);
+
+		GtkTextBuffer* gtktxtbuffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (m_pTextView));
+
+		FILE* f = fopen (XTIDE_DATADIR"/disclaimer.txt","rb");
+		if (NULL != f)
+		{
+			unsigned long lSize;
+			char * buffer = NULL;
+			size_t result;
+
+			fseek (f , 0 , SEEK_END);
+			lSize = ftell (f);
+			rewind (f);
+
+			buffer = (char*) malloc (sizeof(char)*(lSize+1));
+			if (buffer != NULL)
+			{
+				result = fread (buffer,1,lSize,f);
+				buffer[lSize] = '\0';
+				if (result == lSize)
+				{
+					gtk_text_buffer_set_text (gtktxtbuffer,buffer, -1);
+					m_bTextLoaded = true;
+				}
+				free (buffer);
+			}
+			fclose (f);
+		}
+
+		/*
+		g_signal_connect_swapped (m_pDialog,
+			"response", 
+			G_CALLBACK (gtk_widget_hide),
+			m_pDialog);
+			*/
+
+		GtkWidget* sw = gtk_scrolled_window_new(NULL,NULL);
+		gtk_widget_show(sw);
+		gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw),GTK_POLICY_AUTOMATIC,GTK_POLICY_AUTOMATIC);
+		gtk_container_add (GTK_CONTAINER (sw), m_pTextView);
+		gtk_container_add (GTK_CONTAINER (GTK_DIALOG(m_pDialog)->vbox), sw);
+		gtk_widget_show(m_pTextView);
+
+		// start by selecting the old station
+		m_bLoaded = true;
+	}
+	~DisclaimerDlg()
+	{
+		gtk_widget_destroy(m_pDialog);
+	}
+
+	bool Run()
+	{
+		m_bDisable = false;
+		if (m_bTextLoaded)
+		{
+			gint result =
+				gtk_dialog_run (GTK_DIALOG(m_pDialog));
+			if (GTK_RESPONSE_CANCEL == result)
+			{
+				Global::disableDisclaimer();
+				m_bDisable = true;
+			}
+		}
+		return m_bDisable;
+	}
+
+	GtkWidget* m_pDialog;
+	GtkWidget* m_pTextView;
+	GtkTideWindowImpl* m_pParent;
+	bool m_bDisable;
+	bool m_bLoaded;
+	bool m_bTextLoaded;
+
+};
+
+class DateSelectDlg
+{
+public:
+	DateSelectDlg(GtkTideWindowImpl* parent) : 
+		m_pParent(parent)
+	{
+		m_bLoaded = false;
+		m_pDialog = gtk_dialog_new_with_buttons ("Choose Date",
+			GTK_WINDOW(m_pParent->m_pWindow),
+			GTK_DIALOG_DESTROY_WITH_PARENT,
+			GTK_STOCK_OK,
+			GTK_RESPONSE_OK,
+			GTK_STOCK_CANCEL,
+			GTK_RESPONSE_CANCEL,
+			NULL);
+		m_pCalendar     = gtk_calendar_new();
+
+		gtk_container_add (GTK_CONTAINER (GTK_DIALOG(m_pDialog)->vbox), m_pCalendar);
+		gtk_widget_show(m_pCalendar);
+
+		// start by selecting the old station
+		m_bLoaded = true;
+	}
+	~DateSelectDlg()
+	{
+		gtk_widget_destroy(m_pDialog);
+	}
+
+	bool Run()
+	{
+		m_bNewDate = false;
+		gint result =
+			gtk_dialog_run (GTK_DIALOG(m_pDialog));
+		if (GTK_RESPONSE_OK == result)
+		{
+			m_bNewDate = true;
+		}
+		return m_bNewDate;
+	}
+
+	void SetDate(unsigned int year, unsigned int month, unsigned int day)
+	{
+		gtk_calendar_select_month(GTK_CALENDAR(m_pCalendar), month, year);
+		gtk_calendar_select_day(GTK_CALENDAR(m_pCalendar), day);
+	}
+
+	void GetDate(unsigned int& year, unsigned int& month, unsigned int& day)
+	{
+		gtk_calendar_get_date(GTK_CALENDAR(m_pCalendar),&year, &month, &day);
+	}
+
+	GtkWidget* m_pDialog;
+	GtkWidget* m_pCalendar;
+	GtkTideWindowImpl* m_pParent;
+	bool m_bNewDate;
+	bool m_bLoaded;
+
+};
+
+
+
+
+class LocationSelectDlg
+{
+public:
+	LocationSelectDlg(GtkTideWindowImpl* parent) : 
+		m_pParent(parent), m_pOldStationRef(parent->m_pStationRef)
+	{
+		m_bLoaded = false;
+		m_pDialog = gtk_dialog_new_with_buttons ("Choose Location",
+			GTK_WINDOW(m_pParent->m_pWindow),
+			GTK_DIALOG_DESTROY_WITH_PARENT,
+			GTK_STOCK_OK,
+			GTK_RESPONSE_OK,
+			GTK_STOCK_CANCEL,
+			GTK_RESPONSE_CANCEL,
+			NULL);
+		m_pComboCountry = gtk_combo_box_new_text();
+		m_pComboArea    = gtk_combo_box_new_text();
+		m_pComboLoc     = gtk_combo_box_new_text();
+
+		gtk_container_add (GTK_CONTAINER (GTK_DIALOG(m_pDialog)->vbox), m_pComboCountry);
+		gtk_container_add (GTK_CONTAINER (GTK_DIALOG(m_pDialog)->vbox), m_pComboArea);
+		gtk_container_add (GTK_CONTAINER (GTK_DIALOG(m_pDialog)->vbox), m_pComboLoc);
+
+		g_signal_connect(m_pComboCountry,
+			"changed",(GCallback)LocationSelectDlg::combo_changed,this);
+		g_signal_connect(m_pComboArea,
+			"changed",(GCallback)LocationSelectDlg::combo_changed,this);
+
+		gtk_widget_show(m_pComboCountry);
+		gtk_widget_show(m_pComboArea);
+		gtk_widget_show(m_pComboLoc);
+
+		// start by selecting the old station
+
+
+		
+		Dstr old_country;
+		if (NULL != m_pOldStationRef)
+		{
+			old_country = m_pOldStationRef->country;
+		}
+		old_country.utf8();
+
+		gint selectid = 0;
+		MapCountryArea::iterator itr1;
+		gint count = 0;
+		for (itr1 = m_pParent->m_mapStationRefCache.begin();
+			m_pParent->m_mapStationRefCache.end() != itr1; ++itr1)
+		{
+			Dstr country = itr1->first;
+			gtk_combo_box_append_text(GTK_COMBO_BOX(m_pComboCountry),
+					country.aschar());
+			if (country == old_country)
+			{
+				selectid = count;
+			}
+			++count;
+		}
+		gtk_combo_box_set_active(GTK_COMBO_BOX(m_pComboCountry),selectid);
+		m_bLoaded = true;
+	}
+	~LocationSelectDlg()
+	{
+		gtk_widget_destroy(m_pDialog);
+	}
+
+	void Run()
+	{
+		m_bNewLocation = false;
+		gint result =
+			gtk_dialog_run (GTK_DIALOG(m_pDialog));
+		if (GTK_RESPONSE_OK == result)
+		{
+			m_bNewLocation = true;
+		}
+	}
+
+	static void combo_changed (GtkComboBox *widget, gpointer user_data)
+	{
+		LocationSelectDlg* locDlg = (LocationSelectDlg*)user_data;
+		if (widget == GTK_COMBO_BOX(locDlg->m_pComboCountry))
+		{
+			gtk_list_store_clear(
+				GTK_LIST_STORE(
+					gtk_combo_box_get_model(
+						GTK_COMBO_BOX(locDlg->m_pComboArea))));
+
+			Dstr old_area;
+			if (!locDlg->m_bLoaded && NULL != locDlg->m_pOldStationRef)
+			{
+				string strName = locDlg->m_pOldStationRef->name.aschar();
+				string::size_type pos = strName.find_last_of(',');
+				if (string::npos != pos && strName.size()-1 != pos)
+				{
+					string strLoc  = strName.substr(0,pos);
+					string strArea = strName.substr(pos+1, strName.size()-1 - pos);
+
+					old_area = strArea.c_str();
+					old_area.trim().utf8();
+				}
+				else
+				{
+					old_area = "Unknown";
+				}
+			}
+
+			gchar* country = gtk_combo_box_get_active_text(widget);
+			if (NULL != country)
+			{
+				// update area and loc
+				MapAreaLocation::iterator itr;
+				gint selectid = 0;
+				gint count = 0;
+				for (itr = locDlg->m_pParent->m_mapStationRefCache[country].begin();
+					locDlg->m_pParent->m_mapStationRefCache[country].end() != itr;
+					++itr)
+				{
+					Dstr area = itr->first; 
+					gtk_combo_box_append_text(GTK_COMBO_BOX(locDlg->m_pComboArea),
+						area.aschar());
+
+					if (!locDlg->m_bLoaded && old_area == area)
+					{
+						selectid = count;
+					}
+					++count;
+
+				}
+				gtk_combo_box_set_active(GTK_COMBO_BOX(locDlg->m_pComboArea),selectid);
+
+				g_free(country);
+			}
+		}
+		else if (widget == GTK_COMBO_BOX(locDlg->m_pComboArea))
+		{
+			gtk_list_store_clear(
+				GTK_LIST_STORE(
+					gtk_combo_box_get_model(
+						GTK_COMBO_BOX(locDlg->m_pComboLoc))));
+
+			Dstr old_loc;
+			if (!locDlg->m_bLoaded && NULL != locDlg->m_pOldStationRef)
+			{
+				string strName = locDlg->m_pOldStationRef->name.aschar();
+				string::size_type pos = strName.find_last_of(',');
+				if (string::npos != pos && strName.size()-1 != pos)
+				{
+					string strLoc  = strName.substr(0,pos);
+					old_loc = strLoc.c_str();
+					old_loc.trim().utf8();
+				}
+				else
+				{
+					old_loc = locDlg->m_pOldStationRef->name;
+					old_loc.utf8();
+				}
+			}
+
+			gchar* country = gtk_combo_box_get_active_text(GTK_COMBO_BOX(locDlg->m_pComboCountry));
+			gchar* area = gtk_combo_box_get_active_text(widget);
+			if (NULL != country && NULL != area)
+			{
+				// update area and loc
+				MapLocationStation::iterator itr;
+				gint selectid = 0;
+				gint count = 0;
+				for (itr = locDlg->m_pParent->m_mapStationRefCache[country][area].begin();
+					locDlg->m_pParent->m_mapStationRefCache[country][area].end() != itr;
+					++itr)
+				{
+					Dstr loc = itr->first; 
+					gtk_combo_box_append_text(GTK_COMBO_BOX(locDlg->m_pComboLoc),
+						loc.aschar());
+
+					if (!locDlg->m_bLoaded && old_loc == loc)
+					{
+						selectid = count;
+					}
+					++count;
+				}
+				gtk_combo_box_set_active(GTK_COMBO_BOX(locDlg->m_pComboLoc),selectid);
+			}
+			if (country)
+				g_free(country);
+			if (area)
+				g_free(area);
+		}
+	}
+
+	StationRef* GetLocation()
+	{
+		if (m_bNewLocation)
+		{
+			gchar* country = gtk_combo_box_get_active_text(GTK_COMBO_BOX(m_pComboCountry));
+			gchar* area = gtk_combo_box_get_active_text(GTK_COMBO_BOX(m_pComboArea));
+			gchar* loc = gtk_combo_box_get_active_text(GTK_COMBO_BOX(m_pComboLoc));
+
+			return m_pParent->m_mapStationRefCache[country][area][loc];
+		}
+		return NULL;
+	}
+
+	GtkWidget* m_pDialog;
+	GtkWidget* m_pComboCountry;
+	GtkWidget* m_pComboArea;
+	GtkWidget* m_pComboLoc;
+	GtkTideWindowImpl* m_pParent;
+	StationRef* m_pOldStationRef;
+	bool m_bNewLocation;
+	bool m_bLoaded;
+
 };
 
 #define ACTION_QUIT                  "Quit"
@@ -109,12 +503,14 @@ public:
 #define ACTION_FULLSCREEN            "FullScreen"
 #define ACTION_FULLSCREEN_F11        "FullScreenF11"
 #define ACTION_VIEW_TODAY            "ViewToday"
+#define ACTION_CHOOSE_LOCATION       "ChooseLocation"
+#define ACTION_CHOOSE_DATE           "ChooseDate"
 #ifdef MAEMO
 #define ACTION_FULLSCREEN_MAEMO      ACTION_FULLSCREEN"_MAEMO"
 #endif
 
 
-static char* sz_base_ui =
+static const char* sz_base_ui =
 "<ui>"
 "	<menubar name='MenubarMain'>"
 #ifdef MAEMO
@@ -125,6 +521,8 @@ static char* sz_base_ui =
 "			<menuitem action='"ACTION_QUIT"'/>"
 "		</menu>"
 "		<menu action='MenuView'>"
+"			<menuitem action='"ACTION_CHOOSE_LOCATION"'/>"
+"			<menuitem action='"ACTION_CHOOSE_DATE"'/>"
 "			<separator/>"
 "			<menuitem action='"ACTION_FULLSCREEN"'/>"
 "			<separator/>"
@@ -136,6 +534,9 @@ static char* sz_base_ui =
 #endif
 "	</menubar>"
 "	<toolbar name='ToolbarMain'>"
+"		<toolitem action='"ACTION_CHOOSE_LOCATION"'/>"
+"		<toolitem action='"ACTION_CHOOSE_DATE"'/>"
+"		<separator/>"
 "		<toolitem action='"ACTION_VIEW_TODAY"'/>"
 "		<separator/>"
 "		<toolitem action='"ACTION_FULLSCREEN"'/>"
@@ -168,6 +569,8 @@ GtkActionEntry GtkTideWindowImpl::action_entries[] = {
 	{ ACTION_QUIT, "", ("_Quit"), "<Control>w", ("Quit"), G_CALLBACK(action_handler_cb)},
 	{ ACTION_QUIT_2, "", ("_Quit"), "q", ("Quit"), G_CALLBACK(action_handler_cb)},
 	{ ACTION_VIEW_TODAY, GTK_STOCK_HOME, "View _Today", "<Control>t", "View today's date", G_CALLBACK(action_handler_cb)},
+	{ ACTION_CHOOSE_LOCATION, GTK_STOCK_INDEX, "Choose _Location", "<Control>l", "Choose the Tide/Current Location", G_CALLBACK(action_handler_cb)},
+	{ ACTION_CHOOSE_DATE, GTK_STOCK_JUMP_TO, "Choose _Date", "<Control>d", "Choose the Date to Show", G_CALLBACK(action_handler_cb)},
 	{ ACTION_FULLSCREEN_F11, "", ("_Full Screen"), "F11", ("Toggle Full Screen Mode"), G_CALLBACK(action_handler_cb)},
 #ifdef MAEMO
 	{ ACTION_FULLSCREEN_MAEMO, "", ("_Full Screen"), "F6", ("Toggle Full Screen Mode"), G_CALLBACK(action_handler_cb)},
@@ -260,13 +663,12 @@ public:
 		ParsedColor parsedColor = cachedColors[c];
 		gdk_gc_set_rgb_fg_color(gc,&parsedColor.gdk_color);
 		gdk_draw_line(drawable, gc, p1.x, p1.y, p2.x, p2.y);
-		printf("draw line\n");
 	}
 
 	virtual void drawPolygon(const std::vector<Shape::Point>& points, Colors::Colorchoice c, bool filled = false)
 	{
 		GdkPoint* gdk_points = new GdkPoint[points.size()];
-		for (int i = 0; i < points.size(); ++i)
+		for (unsigned int i = 0; i < points.size(); ++i)
 		{
 			gdk_points[i].x = points[i].x;
 			gdk_points[i].y = points[i].y;
@@ -286,14 +688,16 @@ public:
 
 protected:
 	GdkGC*              gc;
+	const bool          antiAliasingDisabled;
+	GdkDrawable*        drawable;
 	PangoContext*       pango_context;
 	PangoLayout*        pango_layout;
 
-	const bool          antiAliasingDisabled;
-	GdkDrawable*        drawable;
 	GdkPixbuf*          pixbufCache;
 
 
+	mutable std::map<std::string,int>    m_mapCacheFontWidth;
+	mutable int m_iFontHeight;
 	
 
 	void                startPixelCache();
@@ -323,7 +727,8 @@ gtkGraph::gtkGraph (GdkDrawable* drawable, PangoContext* context,
 	drawable(drawable),
 	pango_context(context),
 	pango_layout(NULL),
-	pixbufCache(NULL)
+	pixbufCache(NULL),
+	m_iFontHeight(-1)
 
 {
 	//assert (xSize >= Global::minGraphWidth && ySize >= Global::minGraphHeight);
@@ -355,16 +760,29 @@ const unsigned gtkGraph::stringWidth (const Dstr &s) const
 	pango_layout_set_text(pango_layout, s.aschar(), s.length());
 
 	int width;
-	pango_layout_get_pixel_size(pango_layout, &width, NULL);
+	std::map<std::string, int>::iterator itr;
+	itr = m_mapCacheFontWidth.find(std::string(s.aschar()));
+	if (m_mapCacheFontWidth.end() != itr)
+	{
+		width = itr->second;
+	}
+	else
+	{
+		pango_layout_set_text(pango_layout, s.aschar(), s.length());
+		pango_layout_get_pixel_size(pango_layout, &width, NULL);
+		m_mapCacheFontWidth.insert(std::pair<std::string, int>(s.aschar(),width));
+	}
 	return width;
 }
 
 
 const unsigned gtkGraph::fontHeight() const 
 {
-	int height;
-	pango_layout_get_pixel_size(pango_layout, NULL, &height);
-	return height;
+	if (-1 == m_iFontHeight)
+	{
+		pango_layout_get_pixel_size(pango_layout, NULL, &m_iFontHeight);
+	}
+	return m_iFontHeight;
 }
 
 
@@ -372,7 +790,6 @@ void gtkGraph::setPixel (int x, int y, Colors::Colorchoice c)
 {
 	if (x < 0 || x >= (int)_xSize || y < 0 || y >= (int)_ySize)
 		return;
-	uint8_t r,g,b;
 	ParsedColor parsedColor = cachedColors[c];
 
 	gdk_gc_set_rgb_fg_color(gc,&parsedColor.gdk_color);
@@ -387,7 +804,6 @@ void gtkGraph::setPixel (int x,
 {
 	if (x < 0 || x >= (int)_xSize || y < 0 || y >= (int)_ySize)
 		return;
-	//printf("set pixel!\n");
 
 	if (antiAliasingDisabled) 
 	{
@@ -505,8 +921,6 @@ static gboolean
 timeout_smooth_scroll_slowdown(gpointer data)
 {
 	GtkTideWindowImpl* pTideWindowImpl = (GtkTideWindowImpl*)data;
-
-	GtkWidget* widget = pTideWindowImpl->m_pDrawingArea;
 
 	gdouble divider = 1.02; 	
 	gdouble timeout_secs = 35 / 1000.;
@@ -632,23 +1046,13 @@ static void  combo_changed (GtkComboBox *widget, gpointer data)
 {
 	GtkTideWindowImpl* pTideWindowImpl = (GtkTideWindowImpl*)data;
 
-	if (widget == GTK_COMBO_BOX(pTideWindowImpl->m_pComboStations))
+	if (widget == GTK_COMBO_BOX(pTideWindowImpl->m_pComboRecent))
 	{
 		gchar* str_selected = gtk_combo_box_get_active_text(GTK_COMBO_BOX(widget));
 
 		StationIndex &stations = Global::stationIndex();
-		for (unsigned long a=0; a<stations.size(); ++a)
-		{
-			Dstr name = stations[a]->name;
-
-			if ( 0 == strcmp(str_selected, name.aschar()))
-			{
-				Station* pStation = stations[a]->load();
-				pStation->setUnits(Units::meters);
-				pTideWindowImpl->m_pGraph->setStation(pStation);
-			}
-
-		}
+		StationRef* ref = stations.getStationRefByName(str_selected);
+		pTideWindowImpl->SetStationRef(ref);
 		g_free(str_selected);
 	}
 	
@@ -660,8 +1064,6 @@ static gboolean
 timeout_smooth_scroll(gpointer data)
 {
 	GtkTideWindowImpl* pTideWindowImpl = (GtkTideWindowImpl*)data;
-	GtkWidget* widget = pTideWindowImpl->m_pDrawingArea;
-
 	double half = pTideWindowImpl->m_ScrollToOffset/2.;
 
 	gint dist;
@@ -680,7 +1082,9 @@ timeout_smooth_scroll(gpointer data)
 
 	Timestamp ts = pTideWindowImpl->m_pGraph->getNominalStartTime() + ioffset;
 
+	gdk_threads_enter();
 	pTideWindowImpl->m_pGraph->setNominalStartTime(ts);
+	gdk_threads_leave();
 
 	if (0 == pTideWindowImpl->m_ScrollToOffset)
 	{
@@ -690,6 +1094,21 @@ timeout_smooth_scroll(gpointer data)
 	return TRUE;
 }
 
+static void thread_pool_func(gpointer data, gpointer user_data)
+{
+	void (*function)(gpointer) = (void (*)(gpointer))data;
+	if (NULL != function)
+	{
+		(*function)(user_data);
+	}
+}
+
+static void 
+load_stations(gpointer user_data)
+{
+	GtkTideWindowImpl* pTideWindowImpl = (GtkTideWindowImpl*)user_data;
+	pTideWindowImpl->LoadStations();
+}
 
 gboolean
 button_release_event_callback (GtkWidget *widget, GdkEventButton *event, gpointer data)
@@ -702,7 +1121,6 @@ button_release_event_callback (GtkWidget *widget, GdkEventButton *event, gpointe
 		pTideWindowImpl->m_iLastY = (gint)event->y;
 
 		gint diff = pTideWindowImpl->m_iLastX - widget->allocation.width/2;
-		unsigned ival;
 
 		pTideWindowImpl->m_ScrollToOffset = diff;
 
@@ -886,15 +1304,13 @@ expose_event_callback (GtkWidget *widget, GdkEventExpose *event, gpointer data)
 	if (NULL == pTideWindowImpl->m_pGraph)
 		return TRUE;
 
-	Region region;
+	Shape::Region region;
 
 	GdkRectangle *rects = NULL;
 	gint n_rects = 0;
 	gdk_region_get_rectangles(event->region, &rects, &n_rects);
-	//printf("rects: %d\n", n_rects);
 	for (int i = 0; i < n_rects; ++i)
 	{
-		//printf("clip area: %d %d %d %d\n", r.x, r.y, r.width, r.height);
 		region.addRectangle( GtkRect (rects[i]) );
 	}
 	g_free(rects);
@@ -910,7 +1326,6 @@ void size_allocate_callback (GtkWidget *widget, GtkAllocation *allocation, gpoin
 	GtkTideWindowImpl* pTideWindowImpl = (GtkTideWindowImpl*)data;
 	if (NULL == pTideWindowImpl->m_pGraph)
 		return;
-	//printf("setting size: %d %d\n", widget->allocation.width, widget->allocation.height);
 	pTideWindowImpl->m_pGraph->setSize(widget->allocation.width, widget->allocation.height);
 }
 
@@ -925,13 +1340,16 @@ GtkTideWindow::~GtkTideWindow()
 }
 
 GtkTideWindowImpl::GtkTideWindowImpl() :
-	m_pGraph(NULL)
+	m_bStationsLoaded(false),
+	m_pGraph(NULL), 
+	m_pStationRef(NULL)
 {
 	m_iLastX = 0;
 	m_iLastY = 0;
 	m_iPressX = 0;
 	m_iPressY = 0;
 
+	m_pThreadPool = g_thread_pool_new(thread_pool_func, this, 4, FALSE, NULL);
 
 #ifdef MAEMO
 	/* Initialize maemo application */
@@ -949,9 +1367,8 @@ GtkTideWindowImpl::GtkTideWindowImpl() :
 	Global::initCodeset();
 	Global::settings["tf"].s = "%T %Z";
 	Global::settings["hf"].s = "%H";
-	StationIndex &stations = Global::stationIndex();
 
-	for (int i = 0; i < Colors::numColors; ++i)
+	for (unsigned int i = 0; i < Colors::numColors; ++i)
 	{
 
 		Colors::parseColor (Global::settings[Colors::colorarg[(Colors::Colorchoice)i]].s,
@@ -961,39 +1378,7 @@ GtkTideWindowImpl::GtkTideWindowImpl() :
 		cachedColors[i].gdk_color.blue = cachedColors[i].b * 0xff;
 	}
 
-	m_pComboStations = gtk_combo_box_new_text();
-
-	Station* pStation = NULL;
-	for (unsigned long a=0; a<stations.size(); ++a)
-	{
-		
-
-		//printf("stn: %s %s\n", stations[a]->timezone.aschar(), stations[a]->name.aschar());
-		//if (NULL == station && 0 == strcmp("Victoria, British Columbia", stations[a]->name.aschar()))
-		//if (stations[a]->name.aschar()[0] == 'P')
-		//printf("Station Details:\n%s\n", stations[a]->name.aschar());
-
-		if (0 == strcmp("Puerto Vallarta, Jalisco, Mexico", stations[a]->name.aschar()))
-		{
-			Dstr name = stations[a]->name;
-			gtk_combo_box_append_text(GTK_COMBO_BOX(m_pComboStations), name.utf8().aschar());
-		}
-
-		if (NULL == pStation && 0 == strcmp("Point No Point, British Columbia", stations[a]->name.aschar()))
-		{
-			Dstr name = stations[a]->name;
-			gtk_combo_box_append_text(GTK_COMBO_BOX(m_pComboStations), name.utf8().aschar());
-			pStation = stations[a]->load();
-			pStation->setUnits(Units::meters);
-			Dstr about;
-			pStation->aboutMode (about, Format::text, Global::codeset);
-			
-			//gtk_combo_box_set_active(GTK_COMBO_BOX(m_pComboStations), a);
-			gtk_combo_box_set_active(GTK_COMBO_BOX(m_pComboStations), 0);
-			//printf("Station Details:\n%s\n", about.aschar());
-		}
-
-	}
+	m_pComboRecent = gtk_combo_box_new_text();
 
 #ifndef MAEMO
 	m_pWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -1012,6 +1397,7 @@ GtkTideWindowImpl::GtkTideWindowImpl() :
 #endif
 #endif
 
+	gtk_window_set_default_icon_name ("xtide");	
 
 	/* set up GtkUIManager */
 	GError *tmp_error;
@@ -1056,14 +1442,13 @@ GtkTideWindowImpl::GtkTideWindowImpl() :
 #endif
 		m_pToolItemStations = gtk_tool_item_new();
 		GtkWidget* alignment = gtk_alignment_new(1.,5.,0.,1.);
-		gtk_widget_set_size_request(m_pComboStations, 250, -1); 
-		gtk_container_add(GTK_CONTAINER(alignment), m_pComboStations);
+		gtk_widget_set_size_request(m_pComboRecent, 250, -1); 
+		gtk_container_add(GTK_CONTAINER(alignment), m_pComboRecent);
 		gtk_container_add(GTK_CONTAINER(m_pToolItemStations), alignment);
 		gtk_widget_show_all(GTK_WIDGET(m_pToolItemStations));
 		gtk_tool_item_set_expand(m_pToolItemStations, TRUE);
 		gtk_toolbar_insert(GTK_TOOLBAR(m_pToolbar),m_pToolItemStations,-1);
 	}
-	
 
 	GtkWidget* m_pVBox = gtk_vbox_new(FALSE, 0);
 #ifdef MAEMO
@@ -1082,6 +1467,7 @@ GtkTideWindowImpl::GtkTideWindowImpl() :
 	/* end setup GtkUIManager */
 
 	m_pDrawingArea = gtk_drawing_area_new();
+	//GTK_WIDGET_SET_FLAGS(m_pDrawingArea, GTK_CAN_FOCUS);
 	//gtk_widget_set_double_buffered(m_pDrawingArea, false);
 	
 	gtk_widget_add_events(m_pDrawingArea, (GdkEventMask)
@@ -1089,7 +1475,7 @@ GtkTideWindowImpl::GtkTideWindowImpl() :
 			  GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK)
 			);
 
-	g_signal_connect(m_pComboStations,
+	m_ulComboHandlerID = g_signal_connect(m_pComboRecent,
 		"changed",(GCallback)combo_changed,this);
 
     g_signal_connect (G_OBJECT (m_pWindow), "delete_event",
@@ -1124,12 +1510,28 @@ GtkTideWindowImpl::GtkTideWindowImpl() :
 
 	PangoContext* context = gtk_widget_get_pango_context(m_pDrawingArea);
 
+	gtk_widget_grab_focus(m_pDrawingArea);
 	gtk_widget_show_all(m_pWindow);
 
 	m_pGraph = new gtkGraph(m_pDrawingArea->window, context);
+	//m_pGraph->setDrawTitle(false);
+	m_pGraph->setDrawTitleOverGraph(false);
+	m_pGraph->setDrawDepthOverGraph(false);
+	m_pGraph->setDrawHoursOverGraph(false);
 	m_pGraph->setSize(m_pDrawingArea->allocation.width, m_pDrawingArea->allocation.height);
 	((gtkGraph*)m_pGraph)->setDrawable(m_pDrawingArea->window);
-	m_pGraph->setStation(pStation);
+	//m_pGraph->setStation(pStation);
+	//
+
+	g_thread_pool_push(m_pThreadPool, (gpointer)load_stations, NULL);
+
+	bool bDisclaimerDisabled = Global::disclaimerDisabled();
+	if (!bDisclaimerDisabled)
+	{
+		DisclaimerDlg disclaimerDlg(this);
+		disclaimerDlg.Run();
+	}
+
 }
 
 GtkTideWindowImpl::~GtkTideWindowImpl()
@@ -1146,6 +1548,8 @@ GtkTideWindowImpl::~GtkTideWindowImpl()
 		osso_deinitialize(osso_context);
 	}
 #endif
+
+	g_thread_pool_free(m_pThreadPool, TRUE, TRUE);
 }
 
 void GtkTideWindowImpl::StartTimeoutSmoothScroll()
@@ -1175,13 +1579,126 @@ void GtkTideWindowImpl::StopTimeoutSmoothScrollSlowdown()
 	}
 }
 
+void GtkTideWindowImpl::LoadStations()
+{
+	StationIndex &stations = Global::stationIndex();
+	for (unsigned long i=0; i < stations.size(); ++i)
+	{
+		StationRef* stationRef = stations[i];
+		string strName = stationRef->name.aschar();
+		string::size_type pos = strName.find_last_of(',');
+
+		Dstr country = stationRef->country;
+
+		if (string::npos != pos && strName.size()-1 != pos)
+		{
+			string strLoc  = strName.substr(0,pos);
+			string strArea = strName.substr(pos+1, strName.size()-1 - pos);
+
+			Dstr loc = strLoc.c_str();
+			loc.trim();
+			Dstr area = strArea.c_str();
+			area.trim();
+
+			m_mapStationRefCache[country.utf8()][area.utf8()][loc.utf8()]= stationRef;
+		}
+		else
+		{
+			Dstr name = stationRef->name;
+			m_mapStationRefCache[country]["Unknown"][name.utf8()] = stationRef;
+		}
+	}
+
+	// possibly set default location
+	StationRef *defaultRef =
+		stations.getStationRefByName (Global::settings["dl"].s);
+
+	gdk_threads_enter();
+	SetStationRef(defaultRef);
+	gdk_threads_leave();
+
+	m_bStationsLoaded = true;
+}
+
+void GtkTideWindowImpl::SetStationRef(StationRef* stationRef)
+{
+	Configurable &c = Global::settings["rl"];
+	if (NULL != stationRef)
+	{
+		m_pStationRef = stationRef;
+
+		// FIXME hardcoded to meters
+		Station* pStation = m_pStationRef->load();
+		pStation->setUnits(Units::meters);
+		m_pGraph->setStation(pStation);
+
+		Dstr name = "gtktide - ";
+		name += m_pStationRef->name;
+		gtk_window_set_title (GTK_WINDOW(m_pWindow), name.utf8().aschar());
+
+		Global::settings["dl"].s = m_pStationRef->name;
+		Global::settings["dl"].isNull = false;
+
+		// update recent location list
+		while (9 < c.v.size())
+		{
+			c.v.pop_back();
+		}
+		// remove dups
+		c.v.erase(
+			remove(c.v.begin(), c.v.end(), m_pStationRef->name),
+			c.v.end());
+
+		// inserting:
+		c.v.insert(
+			c.v.begin(), m_pStationRef->name);
+		c.isNull = false;
+
+
+	}
+
+	// update the recent combo
+	g_signal_handler_block(m_pComboRecent, m_ulComboHandlerID);
+	gtk_list_store_clear(
+		GTK_LIST_STORE(
+			gtk_combo_box_get_model(
+				GTK_COMBO_BOX(m_pComboRecent))));
+	for (unsigned int i = 0 ; i < c.v.size(); ++i)
+	{
+		gtk_combo_box_append_text(GTK_COMBO_BOX(m_pComboRecent),
+				c.v[i].aschar());
+		if (NULL != m_pStationRef &&
+				m_pStationRef->name == c.v[i])
+		{
+			// dont signal a change 
+			gtk_combo_box_set_active(GTK_COMBO_BOX(m_pComboRecent),i);
+		}
+	}
+	g_signal_handler_unblock(m_pComboRecent, m_ulComboHandlerID);
+}
+
+
 int main (int argc, char* argv[])
 {
+	g_thread_init(NULL);
+	gdk_threads_init();
+
 	gtk_init(&argc, &argv);
 
-	GtkTideWindow myTideWindow;
+	//Global::settings.applyXResources (getResource);
+	Global::settings.applyUserDefaults();
+	Global::settings.applyCommandLine (argc, argv);
+	Global::settings.fixUpDeprecatedSettings();
 
+	//printf("location %s\n", Global::settings["l"].v[0].aschar());
+	// const StationRef *sr (Global::stationIndex().getStationRefByName(name));
+	
+	gdk_threads_enter();
+	GtkTideWindow myTideWindow;
 	gtk_main();
+	gdk_threads_leave();
+
+	Global::settings.save();
 
 	return 0;
 }
@@ -1214,6 +1731,51 @@ static void action_handler_cb(GtkAction *action, gpointer data)
 			gtk_window_fullscreen(GTK_WINDOW(pTideWindowImpl->m_pWindow));
 		}
 		
+	}
+	else if (0 == strcmp(szAction,ACTION_CHOOSE_LOCATION) )
+	{
+		LocationSelectDlg dlg(pTideWindowImpl);
+		dlg.Run();
+		StationRef* newStation = dlg.GetLocation();
+		if (NULL != newStation)
+		{
+			pTideWindowImpl->SetStationRef(newStation);
+		}
+	}
+	else if (0 == strcmp(szAction,ACTION_CHOOSE_DATE) )
+	{
+		DateSelectDlg dlg(pTideWindowImpl);
+		Timestamp ts_current = pTideWindowImpl->m_pGraph->getNominalStartTime();
+		time_t timet = ts_current.timet();
+		struct tm tm_cur = *localtime(&timet);
+		
+		dlg.SetDate(tm_cur.tm_year+1900, tm_cur.tm_mon, tm_cur.tm_mday);
+		if ( dlg.Run() )
+		{
+			unsigned int year, month, day;
+			dlg.GetDate(year, month, day);
+			time_t date;
+
+			tm tm_time = {0};
+			tm_time.tm_year = year -1900;
+			tm_time.tm_mon = month;
+			tm_time.tm_mday = day;
+			tm_time.tm_isdst = -1;
+			
+			date = mktime(&tm_time);
+
+			Timestamp ts(date);
+
+			Interval diff = abs(ts - ts_current);
+			// 5 days = 5 * 24 * 60 *60
+
+			if (diff.s() > 5*24*60*60) 
+			{
+				pTideWindowImpl->m_pGraph->clearTideEventsOrganizer();
+			}
+
+			pTideWindowImpl->m_pGraph->setNominalStartTime(Timestamp(date));
+		}
 	}
 	else if (0 == strcmp(szAction,ACTION_VIEW_TODAY) )
 	{

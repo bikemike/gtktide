@@ -61,9 +61,6 @@ public:
 
 protected:
 
-  SafeVector<Constituent> _constituents;
-  const unsigned length; // = _constituents.size()
-  PredictionValue _datum;
 
   // The following are what get accessed directly in tideDerivative.
   // Amplitudes are constituent amplitudes times node factors.
@@ -73,8 +70,19 @@ protected:
   // done in advance instead of on every reference inside of
   // tideDerivative.  The conversion from Amplitude to PredictionValue
   // could not be inlined because of a circular dependency.
-  SafeVector<PredictionValue> amplitudes;
-  SafeVector<Angle>           phases;
+  class OptimizedConstituent
+  {
+  public:
+    OptimizedConstituent(Constituent _c): c(_c){}
+    Constituent c; //constituent
+    PredictionValue a; // amplitude
+    Angle p; // phase
+  };
+
+  SafeVector<OptimizedConstituent> _constituents;
+
+  const unsigned length; // = _constituents.size()
+  PredictionValue _datum;
 
   // Maximum derivative supported by tideDerivative and family.
   static const unsigned maxDeriv = 2U;

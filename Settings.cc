@@ -664,6 +664,7 @@ Settings::Settings () {
     {"mc", "markcolor", "Color of mark line in graphs and of stations in the location chooser.", Configurable::settingKind, Configurable::dstrRep, Configurable::colorInterp, false, 0,0,0,markdefcolor,PredictionValue(),DstrVector(), 0},
     {"Mc", "mslcolor", "Color of middle-level line in tide graphs.", Configurable::settingKind, Configurable::dstrRep, Configurable::colorInterp, false, 0,0,0,msldefcolor,PredictionValue(),DstrVector(), 0},
     {"nc", "nightcolor", "Nighttime background color in tide graphs.", Configurable::settingKind, Configurable::dstrRep, Configurable::colorInterp, false, 0,0,0,nightdefcolor,PredictionValue(),DstrVector(), 0},
+	{"tc", "twilightcolor", "Twilight background color in tide graphs.", Configurable::settingKind, Configurable::dstrRep, Configurable::colorInterp, false, 0,0,0,twidefcolor,PredictionValue(),DstrVector(), 0},
     {"aa", "antialias", "Anti-alias tide graphs on true color displays?", Configurable::settingKind, Configurable::charRep, Configurable::booleanInterp, false, 0,0,antialias,Dstr(),PredictionValue(),DstrVector(), 0},
     {"gt", "graphtenths", "Label tenths of units in tide graphs?", Configurable::settingKind, Configurable::charRep, Configurable::booleanInterp, false, 0,0,graphtenths,Dstr(),PredictionValue(),DstrVector(), 0},
     {"el", "extralines", "Draw datum and middle-level lines in tide graphs?", Configurable::settingKind, Configurable::charRep, Configurable::booleanInterp, false, 0,0,extralines,Dstr(),PredictionValue(),DstrVector(), 0},
@@ -690,6 +691,9 @@ Settings::Settings () {
     {"hf", "hourfmt", "Strftime style format string for printing hour labels on time axis.", Configurable::settingKind, Configurable::dstrRep, Configurable::timeFormatInterp, false, 0,0,0,hourfmt,PredictionValue(),DstrVector(), 0},
     {"tf", "timefmt", "Strftime style format string for printing times.", Configurable::settingKind, Configurable::dstrRep, Configurable::timeFormatInterp, false, 0,0,0,timefmt,PredictionValue(),DstrVector(), 0},
     {"u", "units", "Preferred units of length:", Configurable::settingKind, Configurable::dstrRep, Configurable::unitInterp, false, 0,0,0,prefunits,PredictionValue(),DstrVector(), 0},
+
+    {"dl", "default location", "The default location", Configurable::settingKind, Configurable::dstrRep, Configurable::textInterp, true, 0,0,0,"Dstr()",PredictionValue(),DstrVector(), 0},
+    {"rl", "recent locations", "Recently viewed locations." , Configurable::settingKind, Configurable::dstrVectorRep, Configurable::textInterp, true, 0,0,0,Dstr(),PredictionValue(),DstrVector(), 0},
 
     {"v", Dstr(), Dstr(), Configurable::switchKind, Configurable::charRep, Configurable::booleanInterp, false, 0,0,'n',Dstr(),PredictionValue(),DstrVector(), 0},
     {"suck", Dstr(), Dstr(), Configurable::switchKind, Configurable::charRep, Configurable::booleanInterp, false, 0,0,'n',Dstr(),PredictionValue(),DstrVector(), 0},
@@ -757,7 +761,29 @@ void Settings::applyUserDefaults () {
             if (cfbl.kind == Configurable::settingKind) {
               Dstr culprit ("the ~/.xtide.xml attribute for ");
               culprit += cfbl.switchName;
-              install (cfbl, culprit, *(a->value));
+              // special handling for vectors
+			  if (Configurable::dstrVectorRep == cfbl.representation)
+			  {
+                Dstr sep("|!|");
+                Dstr str = *(a->value);
+				int pos = -1;
+                while (-1 != (pos = str.strstr(sep)))
+                {
+                  Dstr val = str;
+				  // see Dstr header for -= and /= overload
+                  val -= pos;
+                  str /= pos + sep.length();;
+                  if(val.length())
+                  {
+                    // add to vect
+                    cfbl.v.push_back (val);
+                  }
+                }
+			  }
+			  else
+			  {
+                install (cfbl, culprit, *(a->value));
+			  }
             }
           }
           a = a->next;
@@ -823,6 +849,15 @@ void Settings::save() {
         break;
       case Configurable::dstrRep:
         fprintf (fp, "%s", cfbl.s.aschar());
+        break;
+      case Configurable::dstrVectorRep:
+        {
+          DstrVector::iterator itr;
+          for (itr = cfbl.v.begin(); cfbl.v.end() != itr; ++itr)
+		  {
+            fprintf (fp, "%s|!|", itr->aschar());
+		  }
+		}
         break;
       default:
         assert (false);
