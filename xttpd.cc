@@ -865,7 +865,8 @@ static void graphImage (int s, const Dstr &filename) {
   checkedWrite (s, pageText.aschar(), pageText.length());
 
   RGBGraph g (Global::settings["gw"].u, Global::settings["gh"].u);
-  g.drawTides (station, startTime);
+  g.setStation (station);
+  g.drawTides (startTime);
   PNGSocket = s;
   g.writeAsPNG (writePNGToSocket);
   close (s);

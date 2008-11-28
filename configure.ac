@@ -6,6 +6,8 @@ AC_PREREQ([2.60])
 # FIXME: Update version info on each release
 AC_INIT([XTide], [2.10], [dave@flaterco.com])
 
+AC_CONFIG_MACRO_DIR([m4])
+
 AM_INIT_AUTOMAKE([-Wall -Werror])
 
 AM_CONFIG_HEADER([config.h])

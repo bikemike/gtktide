@@ -22,9 +22,9 @@ namespace Shape
 class Point
 {
 public:
-	Point(int _x, int _y) : x(_x), y(_y) {}
-	int x;
-	int y;
+	Point(double _x, double _y) : x(_x), y(_y) {}
+	double x;
+	double y;
 
 	bool operator==(const Point& other) const
 	{
@@ -266,22 +266,23 @@ public:
 
 	Shape::Rectangle getTitleAreaRect();
 	Shape::Rectangle getDepthAreaRect();
+	Shape::Rectangle getHourAreaRect();
 
 	void setStation(Station* station);
-	Station* getStation(){return m_pStation;}
+	const Station* getStation() const {return m_pStation;}
 
 	void drawTides(const Shape::Region& clipRegion);
 
-	void drawTides (Station *station,
+	void drawTides (
 		Timestamp nominalStartTime,
 		const Shape::Region& clipRegion,
 		Angle *angle = NULL);
 
-	void drawTitleArea(Station* station,
+	void drawTitleArea(
 	   Timestamp nominalStartTime,
 	   const Shape::Region& clipRegion);
 
-	void drawTidesFull (Station *station,
+	void drawTidesFull (
 		Timestamp nominalStartTime,
 		const Shape::Region& clipRegion,
 		Angle *angle = NULL);
@@ -290,20 +291,17 @@ public:
 
   Timestamp getStartTime();
   Timestamp getStartTime(Timestamp nominalStartTime);
-  Timestamp getStartTime(Station *station, Timestamp nominalStartTime);
 
   Timestamp getEndTime();
   Timestamp getEndTime(Timestamp nominalStartTime);
-  Timestamp getEndTime(Station *station, Timestamp nominalStartTime);
 
   // get the Timestamp offset for the time at offset x in the graph
   Interval getIntervalOffsetAtPosition(unsigned xOffset);
-  Interval getIntervalOffsetAtPosition(Station *station, unsigned xOffset);
 
   void clearTideEventsOrganizer(){m_TideEventOrganizer.clear();}
 
   // angle is a kludge to help out the tide clock icon.
-  void drawTides (Station *station,
+  void drawTides (
                   Timestamp nominalStartTime,
                   Angle *angle = NULL);
 
@@ -386,7 +384,6 @@ protected:
   void clearGraph (Timestamp startTime,
                    Timestamp endTime,
                    Interval increment,
-                   Station *station,
                    TideEventsOrganizer &organizer,
 				   const Shape::Region& clipRect);
 
@@ -398,6 +395,7 @@ protected:
                       double ytide,
                       double nextytide,
                       int x,
+					  double lw,
                       Colors::Colorchoice c);
 
   // Horizontal font metrics.
@@ -436,6 +434,7 @@ protected:
 
 	virtual void drawLine(const Shape::Point& p1, const Shape::Point& p2, Colors::Colorchoice c); 
 	virtual void drawPolygon(const std::vector<Shape::Point>& points, Colors::Colorchoice, bool filled = false); 
+	virtual void drawLines(const std::vector<Shape::Point>& points, Colors::Colorchoice, double thickness = 1.0); 
 	virtual void drawRect(const Shape::Rectangle& rect, Colors::Colorchoice, bool filled = false);
 
 	virtual void moveGraphRegion(const Shape::Rectangle& area, int dx, int dy){}
@@ -513,6 +512,7 @@ protected:
 
   // Strings should be drawn downwards from the y coordinate provided.
   virtual void drawString (int x, int y, const Dstr &s) = 0;
+  int getLineY(int line);
   void centerString       (int x, int y, const Dstr &s);
   void centerStringOnLine (int x, int line, const Dstr &s);
   Shape::Rectangle getCenterStringRect(int x, int y, const Dstr& s);

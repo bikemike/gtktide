@@ -672,6 +672,8 @@ Settings::Settings () {
     {"cb", "cbuttons", "Create tide clocks with buttons?", Configurable::settingKind, Configurable::charRep, Configurable::booleanInterp, false, 0,0,cbuttons,Dstr(),PredictionValue(),DstrVector(), 0},
     {"in", "infer", "Use inferred constituents (expert only)?", Configurable::settingKind, Configurable::charRep, Configurable::booleanInterp, false, 0,0,infer,Dstr(),PredictionValue(),DstrVector(), 0},
     {"nf", "nofill", "Draw tide graphs as line graphs?", Configurable::settingKind, Configurable::charRep, Configurable::booleanInterp, false, 0,0,nofill,Dstr(),PredictionValue(),DstrVector(), 0},
+    {"fb", "fillborder", "Draw a border on the tide graph?", Configurable::settingKind, Configurable::charRep, Configurable::booleanInterp, false, 0,0,fillborder,Dstr(),PredictionValue(),DstrVector(), 0},
+    {"fbc", "fillbordercolor", "Color for tide graph fill border:", Configurable::settingKind, Configurable::dstrRep, Configurable::colorInterp, false, 0,0,0,fbdefcolor,PredictionValue(),DstrVector(), 0},
     {"em", "eventmask", "Event mask:", Configurable::settingKind, Configurable::dstrRep, Configurable::eventMaskInterp, false, 0,0,0,eventmask,PredictionValue(),DstrVector(), 0},
     {"ns", "nosunmoon", Dstr(), Configurable::settingKind, Configurable::charRep, Configurable::booleanInterp, true, 0,0,0,Dstr(),PredictionValue(),DstrVector(), 0},
     {"tl", "toplines", "Draw depth lines on top of tide graph?", Configurable::settingKind, Configurable::charRep, Configurable::booleanInterp, false, 0,0,toplines,Dstr(),PredictionValue(),DstrVector(), 0},

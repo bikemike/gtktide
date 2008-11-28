@@ -23,7 +23,7 @@
 
 
 constString Colors::colorarg[numColors] = {
-  "bg", "fg", "mc", "bc", "dc", "nc", "fc", "ec", "Dc", "Mc", "tc"
+  "bg", "fg", "mc", "bc", "dc", "nc", "fc", "ec", "Dc", "Mc", "tc","fbc"
 };
 
 

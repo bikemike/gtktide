@@ -100,7 +100,8 @@ void xxRoot::apply (ApplyProtocol protocol) {
 	case 2:
 	  break;
 	default:
-	  assert (false);
+	  //assert (false);
+	  break;
 	}
 	break;
       case Configurable::glDoubleInterp:
@@ -505,7 +506,8 @@ xxRoot::xxRoot (int argc, char **argv):
 	  }
 	  break;
 	default:
-	  assert (false);
+	  //assert (false);
+	  break;
 	}
       }
     }

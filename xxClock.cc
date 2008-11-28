@@ -122,7 +122,8 @@ void xxClock::save () {
 void xxClock::save (const Dstr &filename) {
   if ((Global::PNGFile = fopen (filename.aschar(), "wb"))) {
     RGBGraph g (curGraphWidth, curGraphHeight, Graph::clock);
-    g.drawTides (_station.get(), t);
+    g.setStation (new Station(*_station.get()));
+    g.drawTides (t);
     g.writeAsPNG (Global::writePNGToFile);
     fclose (Global::PNGFile);
   } else
@@ -168,7 +169,8 @@ static void xxClockTimerCallback (XtPointer client_data,
 
 void xxClock::clockTick() {
   t = (time_t)time(NULL);
-  graph->drawTides (_station.get(), t, &analogAngle);
+  graph->setStation (new Station(*_station.get()));
+  graph->drawTides (t, &analogAngle);
   draw();
   redrawIcon();
   resetTimer();
@@ -340,7 +342,8 @@ void xxClock::redraw() {
   graph = std::auto_ptr<xxPixmapGraph> (new xxPixmapGraph (curGraphWidth,
 							   curGraphHeight,
 							   Graph::clock));
-  graph->drawTides (_station.get(), t, &analogAngle);
+  graph->setStation (new Station(*_station.get()));
+  graph->drawTides (t, &analogAngle);
   if (_buttonsStyle == buttons) {
     Arg labelArgs[2] =  {
       {XtNheight, (XtArgVal)curGraphHeight},

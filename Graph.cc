@@ -26,19 +26,33 @@ using namespace std;
 #include <sys/time.h>
 #include <string>
 #include <iostream>
+#include <cmath>
 
 using namespace Shape;
 
-class edge
+class edgex
 {
 public:
-  int x;
-  int ymin;
-  int ymax;
+  double x;
+  double ymin;
+  double ymax;
   double s;
-  bool operator<(const edge& other) const
+  bool operator<(const edgex& other) const
   {
     return ymin < other.ymin || (ymin == other.ymin && x < other.x);
+  }
+};
+
+class edgey
+{
+public:
+  double xmin;
+  double xmax;
+  double y;
+  double s;
+  bool operator<(const edgey& other) const
+  {
+    return xmin < other.xmin || (xmin == other.xmin && y < other.y);
   }
 };
 
@@ -244,10 +258,9 @@ void Graph::drawFunkyLine (double prevytide,
                            double ytide,
                            double nextytide,
                            int x,
+						   double slw, // line width
                            Colors::Colorchoice c) {
   double dy, yleft, yright;
-  double slw (Global::settings["lw"].d);
-
   // The fix for line slope breaks down when the slope gets nasty, so
   // switch to a more conservative strategy when that happens.  Line
   // width becomes 1 no matter what.
@@ -287,21 +300,23 @@ void Graph::drawFunkyLine (double prevytide,
 void Graph::clearGraph (Timestamp startTime,
     Timestamp endTime,
     Interval increment,
-    Station *station,
     TideEventsOrganizer &organizer,
     const Region& clipRegion)
 {
-  assert (station);
+  if (NULL == m_pStation)
+  {
+    return;
+  }
 
   // True if event mask is set to suppress sunrises *or* sunsets
   bool ns (Global::settings["em"].s.contains("s"));
 
   // Clear the graph by laying down a background of days and nights.
   TideEvent::EventType nextEventType;
-  if (!(station->coordinates.isNull()) && !ns)
+  if (!(m_pStation->coordinates.isNull()) && !ns)
   {
     TideEvent evnt;
-    Skycal::findNextSunEvent(startTime, station->coordinates, evnt);
+    Skycal::findNextSunEvent(startTime, m_pStation->coordinates, evnt);
     nextEventType = evnt.eventType;
   }
 
@@ -441,6 +456,14 @@ void Graph::drawLine(const Point& p1, const Point& p2, Colors::Colorchoice c)
   }
 }
 
+void Graph::drawLines(const std::vector<Shape::Point>& points, Colors::Colorchoice c, double thickness /* = 1.0 */)
+{
+	for (int i = 1; i < points.size() - 1; ++i)
+	{
+		drawFunkyLine (points[i-1].y, points[i].y, points[i+1].y, points[i].x, thickness, c);
+	}
+}
+
 void Graph::drawPolygon(const std::vector<Point>& points, Colors::Colorchoice c, bool filled /* = false */ )
 {
   std::vector<Point> new_points;
@@ -459,23 +482,23 @@ void Graph::drawPolygon(const std::vector<Point>& points, Colors::Colorchoice c,
       }
     }
 
-    std::vector<edge> edges;
+    std::vector<edgey> edges;
     if (2 <= ppoints->size())
     {
       for (unsigned int i = 1; i < ppoints->size(); ++i)
       {
-        edge e;
-        e.x = (*ppoints)[i-1].x;
-        e.ymin = std::min((*ppoints)[i-1].y, (*ppoints)[i].y);
-        e.ymax = std::max((*ppoints)[i-1].y, (*ppoints)[i].y);
-        e.s = ((*ppoints)[i].y - (*ppoints)[i-1].y ) /
-          (double)((*ppoints)[i].x - (*ppoints)[i-1].x );
+        edgey e;
+        e.xmin = std::min((*ppoints)[i-1].x, (*ppoints)[i].x);
+        e.xmax = std::max((*ppoints)[i-1].x, (*ppoints)[i].x);
+        e.y = (*ppoints)[i-1].y;
+        e.s = ((*ppoints)[i].x - (*ppoints)[i-1].x ) /
+          (double)((*ppoints)[i].y - (*ppoints)[i-1].y );
         edges.push_back(e);
       }
     }
 
-    std::vector<edge> gedges;
-    std::vector<edge>::iterator itr;
+    std::vector<edgey> gedges;
+    std::vector<edgey>::iterator itr;
     for (itr = edges.begin(); edges.end() != itr; ++itr)
     {
       if (0.0 == itr->s)
@@ -489,15 +512,15 @@ void Graph::drawPolygon(const std::vector<Point>& points, Colors::Colorchoice c,
     }
     std::sort(gedges.begin(), gedges.end());
 
-    int scanline = gedges.front().ymin;
+    int scanline = (int)gedges.front().xmin;
     while (true)
     {
       bool bParity = true;
 
-      std::vector<edge> active_edges;
+      std::vector<edgey> active_edges;
       for (itr = gedges.begin() ; gedges.end () != itr; ++itr)
       {
-        if (itr->ymin == scanline)
+        if ((int)itr->xmin == scanline)
         {
           active_edges.push_back(*itr);
         }
@@ -510,14 +533,14 @@ void Graph::drawPolygon(const std::vector<Point>& points, Colors::Colorchoice c,
       if (0 == active_edges.size())
         break;
 
-      int startx = 0;
+      double starty = 0;
       for (itr = active_edges.begin() ; active_edges.end () != itr; ++itr)
       {
         if (!bParity)
         {
-          drawHorizontalLine(startx, itr->x, scanline, c);
+          drawVerticalLine(scanline, starty, itr->y, c);
         }
-        startx = itr->x;
+        starty = itr->y;
         bParity = !bParity;
       }
 
@@ -525,13 +548,13 @@ void Graph::drawPolygon(const std::vector<Point>& points, Colors::Colorchoice c,
 
       for (itr = gedges.begin() ; gedges.end() != itr; )
       {
-        if (itr->ymin == scanline-1)
+        if (itr->xmin == scanline-1)
         {
-          itr->x = itr->x + (int)(1/itr->s);
-          ++itr->ymin;
+          itr->y = itr->y + (int)(1/itr->s);
+          ++itr->xmin;
         }
 
-        if (itr->ymax <= scanline)
+        if (itr->xmax <= scanline)
         {
           itr = gedges.erase(itr);
         }
@@ -576,8 +599,13 @@ void Graph::drawRect(const Shape::Rectangle& rect, Colors::Colorchoice c, bool f
 
 
 void Graph::drawX (int x, double y) {
-  drawVerticalLine   (x, y-4, y+4, Colors::foreground);
-  drawHorizontalLine (x-4, x+4, y, Colors::foreground);
+  const int size = 8;
+  drawVerticalLine   (x-1, y-size, y+size-1, Colors::mark);
+  drawVerticalLine   (x, y-size, y+size-1, Colors::mark);
+  //drawVerticalLine   (x+1, y-size, y+size, Colors::mark);
+  drawHorizontalLine (x-size, x+size -1, y-1, Colors::mark);
+  drawHorizontalLine (x-size, x+size -1, y, Colors::mark);
+  //drawHorizontalLine (x-size, x+size, y+1, Colors::mark);
 }
 
 
@@ -660,6 +688,11 @@ Rectangle Graph::getTitleAreaRect()
   }
 }
 
+Rectangle Graph::getHourAreaRect()
+{
+	int y = getLineY(-1);
+	return Rectangle(0,y, _xSize, _ySize - y);
+}
 
 void Graph::setSize(unsigned xSize, unsigned ySize)
 {
@@ -895,54 +928,48 @@ void Graph::drawBlurbs (int topLine, SafeVector<EventBlurb> &blurbs, const Regio
     labelEvent (topLine, *blurbit, clipRegion);
 }
 
-Timestamp Graph::getStartTime(Timestamp ts)
-{
-	return getStartTime(m_pStation, ts);
-}
-
 Timestamp Graph::getStartTime()
 {
-	return getStartTime(m_pStation, m_tsStartTime);
+	return getStartTime(getNominalStartTime());
 }
 
-Timestamp Graph::getStartTime(Station *station, Timestamp nominalStartTime)
+Timestamp Graph::getStartTime(Timestamp nominalStartTime)
 {
-  if (NULL == station)
+  if (NULL == m_pStation)
   {
     return Timestamp(time(NULL));
   }
 
   const double ymin (vertGraphMargin * (double)_ySize);
   const double ymax ((double)_ySize - ymin);
-  const double valmin (station->minLevel().val());
-  const double valmax (station->maxLevel().val());
+  const double valmin (m_pStation->minLevel().val());
+  const double valmax (m_pStation->maxLevel().val());
   assert (valmin < valmax);
 
   unsigned lineStep, labelWidth, labelRight;
   int minDepth, maxDepth;
-  const Dstr unitsDesc (Units::shortName (station->predictUnits()));
+  const Dstr unitsDesc (Units::shortName (m_pStation->predictUnits()));
   figureLabels (ymax, ymin, valmax, valmin, unitsDesc, lineStep, labelWidth,
 		labelRight, minDepth, maxDepth);
  
-  Interval startOffset = getIntervalOffsetAtPosition(station, startPosition(labelWidth));
+  Interval startOffset = getIntervalOffsetAtPosition(startPosition(labelWidth));
   Timestamp startTime (nominalStartTime - startOffset);
   return startTime;
 }
 
 Timestamp Graph::getEndTime()
 {
-	return getEndTime(m_pStation, m_tsStartTime);
+	return getEndTime(getNominalStartTime());
 }
 
-Timestamp Graph::getEndTime(Timestamp ts)
+Timestamp Graph::getEndTime(Timestamp nominalStartTime)
 {
-	return getEndTime(m_pStation, ts);
-}
-
-Timestamp Graph::getEndTime(Station *station, Timestamp nominalStartTime)
-{
-  Interval endOffset = getIntervalOffsetAtPosition(station, _xSize);
-  Timestamp startTime = getStartTime(station, nominalStartTime);
+  if (NULL == m_pStation)
+  {
+    return Timestamp(time(NULL));
+  }
+  Interval endOffset = getIntervalOffsetAtPosition(_xSize);
+  Timestamp startTime = getStartTime(nominalStartTime);
   Timestamp endTime = startTime + endOffset;
   return endTime;
 }
@@ -952,15 +979,10 @@ Interval Graph::getIntervalOffsetAtPosition(unsigned xOffset)
   if (NULL == m_pStation)
     return Interval();
 
-  return getIntervalOffsetAtPosition(m_pStation, xOffset); 
-}
-
-Interval Graph::getIntervalOffsetAtPosition(Station *station, unsigned xOffset) {
-
   Interval increment (std::max ((interval_rep_t)1,
            Global::intervalround (Global::aspectMagicNumber /
                                   (double)_ySize /
-                  (aspectFudgeFactor() * station->aspect))));
+                  (aspectFudgeFactor() * m_pStation->aspect))));
 
   Interval offsetInterval = 
     increment * xOffset;
@@ -970,22 +992,26 @@ Interval Graph::getIntervalOffsetAtPosition(Station *station, unsigned xOffset) 
 
 void Graph::drawTides (const Region& clipRegion)
 {
-  if (NULL != m_pStation)
-    drawTides(m_pStation, m_tsStartTime, clipRegion, NULL);
+  if (NULL == m_pStation)
+    return;
+  drawTides(m_tsStartTime, clipRegion, NULL);
 }
 
-void Graph::drawTides (Station *station,
+void Graph::drawTides (
                        Timestamp nominalStartTime,
                        Angle *angle) 
 {
-  drawTides(station, nominalStartTime, Region(0,0,_xSize,_ySize), angle);
+  if (NULL == m_pStation)
+    return;
+  drawTides(nominalStartTime, Region(0,0,_xSize,_ySize), angle);
 }
 
-void Graph::drawTides (Station *station,
-                       Timestamp nominalStartTime,
-             const Region& clipRegion,
+void Graph::drawTides (Timestamp nominalStartTime,
+                       const Region& clipRegion,
                        Angle *angle) 
 {
+  if (NULL == m_pStation)
+    return;
   Region regDepthIntersect = clipRegion.intersect(getDepthAreaRect()); 
   Region regTitleIntersect = clipRegion.intersect(getTitleAreaRect()); 
 
@@ -997,16 +1023,16 @@ void Graph::drawTides (Station *station,
   // either side since text pertaining to events occurring beyond the
   // margins can still be visible.  We also need to make sure
   // *something* shows up so that extendRange can work below.
-  Timestamp startTime(getStartTime(station, nominalStartTime));
+  Timestamp startTime(getStartTime(nominalStartTime));
   Rectangle clipRect = clipRegion.getBoundingRect();
 
   Interval delta;
-  Interval startOffset = getIntervalOffsetAtPosition(station, clipRect.x);
-  Interval endOffset   = getIntervalOffsetAtPosition(station, clipRect.x + clipRect.width);
+  Interval startOffset = getIntervalOffsetAtPosition(clipRect.x);
+  Interval endOffset   = getIntervalOffsetAtPosition(clipRect.x + clipRect.width);
   for (delta = Global::day; ; delta *= 2U)
   {
     // make sure we have predictions in the range
-    station->predictTideEvents (startTime + startOffset - delta, startTime + endOffset + delta, m_TideEventOrganizer);
+    m_pStation->predictTideEvents (startTime + startOffset - delta, startTime + endOffset + delta, m_TideEventOrganizer);
     TideEventsConstIterator begin = m_TideEventOrganizer.begin();
     TideEventsReverseIterator rbegin  = m_TideEventOrganizer.rbegin();
     if (begin != m_TideEventOrganizer.end() && rbegin != m_TideEventOrganizer.rend())
@@ -1022,61 +1048,68 @@ void Graph::drawTides (Station *station,
   // draw title area
   if (!regTitleIntersect.isEmpty())
   {
-    drawTitleArea(station, nominalStartTime, regTitleIntersect);
+    drawTitleArea(nominalStartTime, regTitleIntersect);
   }
 
   // draw depth area
   if (!regDepthIntersect.isEmpty())
   {
-    drawTidesFull(station, nominalStartTime, regDepthIntersect, angle);
+    drawTidesFull(nominalStartTime, regDepthIntersect, angle);
   }
 
   // draw main graph
   if (!newClipRegion.isEmpty())
   {
-    drawTidesFull(station, nominalStartTime, newClipRegion, angle);
+    drawTidesFull(nominalStartTime, newClipRegion, angle);
   }
 }
 
-void Graph::drawTitleArea(Station* station,
+void Graph::drawTitleArea(
                        Timestamp nominalStartTime,
              const Region& clipRegion)
 {
-  Timestamp startTime(getStartTime(station, nominalStartTime));
-  Timestamp endTime (getEndTime(station, nominalStartTime));
+  if (NULL == m_pStation)
+  {
+    return;
+  }
+  Timestamp startTime(getStartTime(nominalStartTime));
+  Timestamp endTime (getEndTime(nominalStartTime));
 
   Interval increment (std::max ((interval_rep_t)1,
         Global::intervalround (Global::aspectMagicNumber /
           (double)_ySize /
-          (aspectFudgeFactor() * station->aspect))));
+          (aspectFudgeFactor() * m_pStation->aspect))));
 
-  clearGraph (startTime, endTime, increment, station, m_TideEventOrganizer, clipRegion);
+  clearGraph (startTime, endTime, increment, m_TideEventOrganizer, clipRegion);
 
   Rectangle clipRect = clipRegion.getBoundingRect();
   if (clipRect.intersects(getTitleAreaRect()))
   {
-    drawTitleLine (station->name);
+    drawTitleLine (m_pStation->name);
   }
 }
 
-void Graph::drawTidesFull (Station *station,
-                       Timestamp nominalStartTime,
+void Graph::drawTidesFull (Timestamp nominalStartTime,
 					   const Region& clipRegion,
                        Angle *angle) 
 {
-  assert (station);
-  assert (station->aspect > 0.0);
+  if (NULL == m_pStation)
+  {
+    return;
+  }
+  assert (m_pStation);
+  assert (m_pStation->aspect > 0.0);
 
   // Figure constants.
   const double ymin (vertGraphMargin * (double)_ySize);
   const double ymax ((double)_ySize - ymin);
-  const double valmin (station->minLevel().val());
-  const double valmax (station->maxLevel().val());
+  const double valmin (m_pStation->minLevel().val());
+  const double valmax (m_pStation->maxLevel().val());
   assert (valmin < valmax);
 
   unsigned lineStep, labelWidth, labelRight;
   int minDepth, maxDepth;
-  const Dstr unitsDesc (Units::shortName (station->predictUnits()));
+  const Dstr unitsDesc (Units::shortName (m_pStation->predictUnits()));
   figureLabels (ymax, ymin, valmax, valmin, unitsDesc, lineStep, labelWidth,
       labelRight, minDepth, maxDepth);
 
@@ -1086,9 +1119,9 @@ void Graph::drawTidesFull (Station *station,
   Interval increment (std::max ((interval_rep_t)1,
         Global::intervalround (Global::aspectMagicNumber /
           (double)_ySize /
-          (aspectFudgeFactor() * station->aspect))));
-  Timestamp startTime(getStartTime(station, nominalStartTime));
-  Timestamp endTime (getEndTime(station, nominalStartTime));
+          (aspectFudgeFactor() * m_pStation->aspect))));
+  Timestamp startTime(getStartTime(nominalStartTime));
+  Timestamp endTime (getEndTime(nominalStartTime));
   Timestamp currentTime ((time_t)time(NULL));
 
   Rectangle clipRect = clipRegion.getBoundingRect();
@@ -1119,7 +1152,7 @@ void Graph::drawTidesFull (Station *station,
       }
       if (!(doneMax && doneMin)) 
       {
-        station->extendRange (m_TideEventOrganizer, Station::forward, delta);
+        m_pStation->extendRange (m_TideEventOrganizer, Station::forward, delta);
         delta *= 2U;
       }
     }
@@ -1150,7 +1183,7 @@ void Graph::drawTidesFull (Station *station,
             }
           if (!done) 
           {
-            station->extendRange (m_TideEventOrganizer, Station::backward, delta);
+            m_pStation->extendRange (m_TideEventOrganizer, Station::backward, delta);
             delta *= 2U;
           }
         }
@@ -1181,7 +1214,7 @@ void Graph::drawTidesFull (Station *station,
   unsigned maxy = clipRect.y + clipRect.height;
 
   //printf("clearing graph\n");
-  clearGraph (startTime, endTime, increment, station, m_TideEventOrganizer, clipRegion);
+  clearGraph (startTime, endTime, increment, m_TideEventOrganizer, clipRegion);
 
   // Draw depth lines now?
   if (tl == 'n')
@@ -1196,19 +1229,20 @@ void Graph::drawTidesFull (Station *station,
 
   // Prepare to draw the actual tides.
   double prevval, prevytide;
-  double val (station->predictTideLevel(loopt-increment).val());
+  double val (m_pStation->predictTideLevel(loopt-increment).val());
   double ytide = xlate(val);
 
   // clamp to cliprect
   const double yzulu  = std::min((xlate(0)), (double)maxy);
 
-  double nextval (station->predictTideLevel(loopt).val());
+  double nextval (m_pStation->predictTideLevel(loopt).val());
   double nextytide (xlate (nextval));
   unsigned int x;
   startPixelCache();
 
   //std::vector<Point> poly;
   std::vector< std::pair<Colors::Colorchoice, std::vector<Point> > > polys;
+  std::vector< std::pair<Colors::Colorchoice, std::vector<Point> > > lines;
 
   //polys[polys.size()-1].second.push_back(Point(x,y));
 
@@ -1222,7 +1256,7 @@ void Graph::drawTidesFull (Station *station,
     prevytide = ytide;
     val = nextval;
     ytide = nextytide;
-    nextval = station->predictTideLevel(loopt).val();
+    nextval = m_pStation->predictTideLevel(loopt).val();
     //nextval = rand()/(double)RAND_MAX * (valmax - valmin) + valmin;
 
     nextytide = xlate(nextval);
@@ -1235,9 +1269,10 @@ void Graph::drawTidesFull (Station *station,
     // clamp to cliprect
     //bool bTop = miny < ytide;
     //ytide = std::max(ytide, (double)miny);
-    if (station->isCurrent) 
+	Colors::Colorchoice c;
+    if (m_pStation->isCurrent) 
     {
-      Colors::Colorchoice c = (val > 0.0 ? Colors::flood : Colors::ebb);
+      c = (val > 0.0 ? Colors::flood : Colors::ebb);
       //Colors::Colorchoice c = Colors::flood;
 
       if (nf == 'n')
@@ -1257,19 +1292,19 @@ void Graph::drawTidesFull (Station *station,
         {
           if (1 < polys.size())
           {
-            polys[polys.size()-2].second.push_back(Point(x-1, (int)yzulu));
+            polys[polys.size()-2].second.push_back(Point(x+10, ytide));
+            polys[polys.size()-2].second.push_back(Point(x+10, yzulu));
           }
-          polys.back().second.push_back(Point(x, (int)yzulu));
+          polys.back().second.push_back(Point(x, yzulu));
         }
-        polys.back().second.push_back(Point(x, (int)ytide));
+        polys.back().second.push_back(Point(x, ytide));
       }
-      else
-        drawFunkyLine (prevytide, ytide, nextytide, x, c);
+      //drawFunkyLine (prevytide, ytide, nextytide, x, c);
 
     }
     else 
     {
-      Colors::Colorchoice c = (prevval < val ? Colors::flood : Colors::ebb);
+      c = (prevval < val ? Colors::flood : Colors::ebb);
       //Colors::Colorchoice c = Colors::flood;
       
       if (nf == 'n')
@@ -1291,38 +1326,74 @@ void Graph::drawTidesFull (Station *station,
         {
           if (1 < polys.size())
           {
-            polys[polys.size()-2].second.push_back(Point(x-1, (int)_ySize));
+            polys[polys.size()-2].second.push_back(Point(x, ytide));
+            polys[polys.size()-2].second.push_back(Point(x, _ySize));
           }
-          polys.back().second.push_back(Point(x, (int)_ySize));
+          polys.back().second.push_back(Point(x, _ySize));
         }
-        polys.back().second.push_back(Point(x, (int)ytide));
+        polys.back().second.push_back(Point(x, ytide));
       }
-      else
-        drawFunkyLine (prevytide, ytide, nextytide, x, c);
+      //drawFunkyLine (prevytide, ytide, nextytide, x, c);
     }
-
-#ifdef blendingTest
-    NullablePredictionValue firstYear, secondYear;
-    station->tideLevelBlendValues (loopt-increment, firstYear, secondYear);
-    if (!firstYear.isNull())
-      setPixel (x, (int)xlate(firstYear.val()), Colors::mark);
-    if (!secondYear.isNull())
-      setPixel (x, (int)xlate(secondYear.val()), Colors::msl);
-#endif
+    if ( 0 == lines.size() || lines[lines.size() -1].first != c )
+    {
+      if (0 < lines.size())
+	  {
+		  lines.back().second.push_back(Point(x, nextytide));
+	  }
+      lines.push_back(std::pair<Colors::Colorchoice, std::vector<Point> >(c, std::vector<Point>()));
+      lines.back().second.push_back(Point(x, prevytide));
+    }
+    lines.back().second.push_back(Point(x, ytide));
   }
   
-  if (0 < polys.size())
+  if (0 < lines.size())
   {
-    if (station->isCurrent) 
-      polys[polys.size()-1].second.push_back(Point(x-1, (int)yzulu));
-    else
-      polys[polys.size()-1].second.push_back(Point(x-1, (int)_ySize));
+	  lines.back().second.push_back(Point(x, nextytide));
   }
 
-  std::vector< std::pair<Colors::Colorchoice, std::vector<Point> > >::iterator itr;
-  for (itr = polys.begin(); polys.end() != itr; ++itr)
+  if (0 < polys.size())
   {
-    drawPolygon(itr->second, itr->first, true);
+    if (m_pStation->isCurrent) 
+	{
+      polys[polys.size()-1].second.push_back(Point(x, ytide));
+      polys[polys.size()-1].second.push_back(Point(x, yzulu));
+	}
+    else
+	{
+      polys[polys.size()-1].second.push_back(Point(x, ytide));
+      polys[polys.size()-1].second.push_back(Point(x, _ySize));
+	}
+  }
+
+  if (nf == 'n')
+  {
+    std::vector< std::pair<Colors::Colorchoice, std::vector<Point> > >::iterator itr;
+    for (itr = polys.begin(); polys.end() != itr; ++itr)
+    {
+	  drawPolygon(itr->second, itr->first, true);
+    }
+
+    char fb = (Global::settings["fb"].c);
+	if (fb == 'y')
+	{
+		std::vector< std::pair<Colors::Colorchoice, std::vector<Point> > >::iterator itr;
+		double lw (Global::settings["lw"].d);
+		for (itr = lines.begin(); lines.end() != itr; ++itr)
+		{
+		  drawLines(itr->second, Colors::fillborder, lw+2);
+		}
+	}
+
+  }
+  else
+  {
+    std::vector< std::pair<Colors::Colorchoice, std::vector<Point> > >::iterator itr;
+    double lw (Global::settings["lw"].d);
+    for (itr = lines.begin(); lines.end() != itr; ++itr)
+    {
+      drawLines(itr->second, itr->first, lw+2);
+    }
   }
 
 
@@ -1364,16 +1435,16 @@ void Graph::drawTidesFull (Station *station,
   // Do time axis.
   const Timestamp timeAxisStopTime (endTime + Global::hour * timeStep);
   loopt = startTime;
-  for (loopt.floorHour(station->timezone);
+  for (loopt.floorHour(m_pStation->timezone);
       loopt < timeAxisStopTime;
-      loopt.nextHour(station->timezone)) 
+      loopt.nextHour(m_pStation->timezone)) 
   {
-    if (loopt.tmStruct(station->timezone).tm_hour % timeStep == 0) 
+    if (loopt.tmStruct(m_pStation->timezone).tm_hour % timeStep == 0) 
     {
       x = Global::iround ((loopt - startTime) / increment);
       drawHourTick (x, Colors::foreground, clipRect);
       Dstr ts;
-      loopt.printHour (ts, station->timezone);
+      loopt.printHour (ts, m_pStation->timezone);
       labelHourTick (x, ts, clipRect);
     }
   }
@@ -1381,9 +1452,9 @@ void Graph::drawTidesFull (Station *station,
   /* Make tick marks for day boundaries thicker. */
   /* They are not guaranteed to coincide with hour transitions! */
   loopt = startTime;
-  for (loopt.floorDay(station->timezone);
+  for (loopt.floorDay(m_pStation->timezone);
       loopt < timeAxisStopTime;
-      loopt.nextDay(station->timezone)) 
+      loopt.nextDay(m_pStation->timezone)) 
   {
     x = Global::iround ((loopt - startTime) / increment);
     drawHourTick (x-1, Colors::foreground, clipRect);
@@ -1398,17 +1469,17 @@ void Graph::drawTidesFull (Station *station,
     {
       // Write current time
       Dstr ts;
-      currentTime.printTime (ts, station->timezone);
+      currentTime.printTime (ts, m_pStation->timezone);
       centerStringOnLine (_xSize/2, 0, ts);
 
       // Write next max
       centerStringOnLine (_xSize/2, 1, nextMax.longDescription());
-      nextMax.eventTime.printTime (ts, station->timezone);
+      nextMax.eventTime.printTime (ts, m_pStation->timezone);
       centerStringOnLine (_xSize/2, 2, ts);
 
       // Write next min
       centerStringOnLine (_xSize/2, -3, nextMin.longDescription());
-      nextMin.eventTime.printTime (ts, station->timezone);
+      nextMin.eventTime.printTime (ts, m_pStation->timezone);
       centerStringOnLine (_xSize/2, -2, ts);
     }
 
@@ -1417,7 +1488,7 @@ void Graph::drawTidesFull (Station *station,
   {
     if (clipRect.intersects(getTitleAreaRect()))
     {
-      drawTitleLine (station->name);
+      drawTitleLine (m_pStation->name);
     }
 
     // Put timestamps for timestampable events.
@@ -1445,8 +1516,8 @@ void Graph::drawTidesFull (Station *station,
       {
         case TideEvent::max:
         case TideEvent::min:
-          te.eventTime.printDate (tempBlurb.line1, station->timezone);
-          te.eventTime.printTime (tempBlurb.line2, station->timezone);
+          te.eventTime.printDate (tempBlurb.line1, m_pStation->timezone);
+          te.eventTime.printTime (tempBlurb.line2, m_pStation->timezone);
           measureBlurb (tempBlurb);
           topBlurbs.push_back (tempBlurb);
           break;
@@ -1458,8 +1529,8 @@ void Graph::drawTidesFull (Station *station,
           {
           Dstr time;
           Dstr date;
-          te.eventTime.printDate (date, station->timezone);
-          te.eventTime.printTime (time, station->timezone);
+          te.eventTime.printDate (date, m_pStation->timezone);
+          te.eventTime.printTime (time, m_pStation->timezone);
           printf("%s  --- %s\n", date.aschar(), time.aschar());
           }
           */
@@ -1475,7 +1546,7 @@ void Graph::drawTidesFull (Station *station,
         case TideEvent::fullmoon:
         case TideEvent::lastquarter:
           drawHourTick (tempBlurb.x, Colors::mark, clipRect);
-          te.eventTime.printTime (tempBlurb.line2, station->timezone);
+          te.eventTime.printTime (tempBlurb.line2, m_pStation->timezone);
           tempBlurb.line1 = te.longDescription();
           if (!isBanner())
             if (stringWidth(tempBlurb.line1) > stringWidth(tempBlurb.line2))
@@ -1506,9 +1577,9 @@ void Graph::drawTidesFull (Station *station,
   }
 
   // Extra lines.
-  if (!station->markLevel.isNull()) 
+  if (!m_pStation->markLevel.isNull()) 
   {
-    ytide = xlate(station->markLevel.val());
+    ytide = xlate(m_pStation->markLevel.val());
     drawHorizontalLine (labelWidth, _xSize-1, ytide, Colors::mark);
   }
   if (el != 'n') 
@@ -1522,7 +1593,7 @@ void Graph::drawTidesFull (Station *station,
   if (currentTime >= startTime && currentTime < endTime) 
   {
     x = Global::iround ((currentTime - startTime) / increment);
-    ytide = xlate(station->predictTideLevel(currentTime).val());
+    ytide = xlate(m_pStation->predictTideLevel(currentTime).val());
     drawX (x, ytide);
   }
 }
@@ -1573,14 +1644,20 @@ void Graph::rightJustifyString (int x, double y, const Dstr &s) {
   drawString (x-(int)stringWidth(s), y, s);
 }
 
-Rectangle Graph::getCenterStringOnLineRect(int x, int line, const Dstr& s)
+
+int Graph::getLineY(int line)
 {
   int y;
   if (line >= 0)
     y = line * (fontHeight()+fontVerticalMargin());
   else
     y = _ySize+(fontHeight()+fontVerticalMargin())*line-hourTickLen();
+  return y;
+}
 
+Rectangle Graph::getCenterStringOnLineRect(int x, int line, const Dstr& s)
+{
+  int y = getLineY(line);
   return getCenterStringRect(x, y, s);
 }
 

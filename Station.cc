@@ -1062,7 +1062,8 @@ void Station::bannerMode (Dstr &text_out,
 						 startTime,
 						 endTime));
   Dstr temp;
-  banner->drawTides (this, startTime);
+  banner->setStation(new Station(*this));
+  banner->drawTides (startTime);
   banner->print (temp);
   text_out += temp;
 }
@@ -1071,7 +1072,8 @@ void Station::bannerMode (Dstr &text_out,
 void Station::graphMode (Dstr &text_out,
                          Timestamp startTime) {
   TTYGraph g (Global::settings["tw"].u, Global::settings["th"].u);
-  g.drawTides (this, startTime);
+  g.setStation(new Station(*this));
+  g.drawTides (startTime);
   g.print (text_out);
 }
 
@@ -1080,14 +1082,16 @@ void Station::clockMode (Dstr &text_out) {
   TTYGraph g (Global::settings["tw"].u,
 	      Global::settings["th"].u,
 	      Graph::clock);
-  g.drawTides (this, (time_t)time(NULL));
+  g.setStation(new Station(*this));
+  g.drawTides ((time_t)time(NULL));
   g.print (text_out);
 }
 
 
 void Station::graphModePNG (FILE *fp, Timestamp startTime) {
   RGBGraph g (Global::settings["gw"].u, Global::settings["gh"].u);
-  g.drawTides (this, startTime);
+  g.setStation(new Station(*this));
+  g.drawTides (startTime);
   Global::PNGFile = fp;
   g.writeAsPNG (Global::writePNGToFile);
 }
@@ -1097,7 +1101,8 @@ void Station::clockModePNG (FILE *fp) {
   RGBGraph g (Global::settings["cw"].u,
 	      Global::settings["gh"].u,
 	      Graph::clock);
-  g.drawTides (this, (time_t)time(NULL));
+  g.setStation(new Station(*this));
+  g.drawTides ((time_t)time(NULL));
   Global::PNGFile = fp;
   g.writeAsPNG (Global::writePNGToFile);
 }

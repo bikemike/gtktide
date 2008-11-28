@@ -218,6 +218,8 @@ void CalendarFormNotC::print (Dstr &text_out) {
     unsigned s ((eventMask.strchr('s') == -1) ? ++lastcol : 0);
     unsigned M ((eventMask.strchr('M') == -1) ? ++lastcol : 0);
     unsigned m ((eventMask.strchr('m') == -1) ? ++lastcol : 0);
+    unsigned T ((eventMask.strchr('T') == -1) ? ++lastcol : 0);
+    unsigned t ((eventMask.strchr('t') == -1) ? ++lastcol : 0);
     // The usually blank phase column makes a natural separator between
     // the tide/current times and the sunrise/sunset times.
     SafeVector<Dstr> colbuf (lastcol+1);
@@ -386,6 +388,8 @@ void CalendarFormNotC::print (Dstr &text_out) {
         case TideEvent::sunset:    doOtherEvent(s);
         case TideEvent::moonrise:  doOtherEvent(M);
         case TideEvent::moonset:   doOtherEvent(m);
+        case TideEvent::dawn:      doOtherEvent(T);
+        case TideEvent::dusk:      doOtherEvent(t);
 
         case TideEvent::newmoon:
         case TideEvent::firstquarter:

@@ -100,7 +100,8 @@ const Interval xxGraphMode::increment() const {
 
 void xxGraphMode::forward() {
   t += increment() * (scrollFraction * curGraphWidth);
-  graph->drawTides (_station.get(), t);
+  graph->setStation (new Station(*_station.get()));
+  graph->drawTides (t);
   draw();
 }
 
@@ -115,7 +116,8 @@ static void xxGraphModebackwardCallback (Widget w unusedParameter,
 
 void xxGraphMode::backward() {
   t -= increment() * (scrollFraction * curGraphWidth);
-  graph->drawTides (_station.get(), t);
+  graph->setStation (new Station(*_station.get()));
+  graph->drawTides (t);
   draw();
 }
 
@@ -163,7 +165,8 @@ void xxGraphMode::save () {
 void xxGraphMode::save (const Dstr &filename) {
   if ((Global::PNGFile = fopen (filename.aschar(), "wb"))) {
     RGBGraph g (curGraphWidth, curGraphHeight);
-    g.drawTides (_station.get(), t);
+    g.setStation (new Station(*_station.get()));
+    g.drawTides (t);
     g.writeAsPNG (Global::writePNGToFile);
     fclose (Global::PNGFile);
   } else
@@ -255,7 +258,8 @@ void xxGraphMode::construct () {
 void xxGraphMode::redraw() {
   graph = std::auto_ptr<xxPixmapGraph> (new xxPixmapGraph (curGraphWidth,
 							   curGraphHeight));
-  graph->drawTides (_station.get(), t);
+  graph->setStation (new Station(*_station.get()));
+  graph->drawTides (t);
   Arg labelArgs[2] =  {
     {XtNheight, (XtArgVal)curGraphHeight},
     {XtNwidth, (XtArgVal)curGraphWidth}

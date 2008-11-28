@@ -35,13 +35,14 @@ static constString bgdefcolor     = "white";
 static constString fgdefcolor     = "black";
 static constString markdefcolor   = "red";
 static constString buttondefcolor = "gray80";
-static constString daydefcolor    = "SkyBlue";
-static constString nightdefcolor  = "DeepSkyBlue";
+static constString daydefcolor    = "lightgray";
+static constString nightdefcolor  = "darkgray";
 static constString flooddefcolor  = "Blue";
 static constString ebbdefcolor    = "SeaGreen";
 static constString datumdefcolor  = "white";
 static constString msldefcolor    = "yellow";
-static constString twidefcolor    = "green";
+static constString twidefcolor    = "gray";
+static constString fbdefcolor     = "black";
 
 // Default graph width and height (pixels), and aspect
 static const unsigned defgwidth  = 960U;
@@ -84,6 +85,9 @@ static const char toplines = 'n';
 
 // Draw tide graph as a line graph?
 static const char nofill = 'n';
+
+// Draw tide graph as a line graph?
+static const char fillborder = 'n';
 
 // Events to suppress (p = phase of moon, S = sunrise, s = sunset, M =
 // moonrise, m = moonset), or x to suppress none.

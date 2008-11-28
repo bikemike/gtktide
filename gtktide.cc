@@ -665,20 +665,84 @@ public:
 		gdk_draw_line(drawable, gc, p1.x, p1.y, p2.x, p2.y);
 	}
 
+	void drawLines(const std::vector<Shape::Point>& points, Colors::Colorchoice c, double thickness = 1.0 )
+	{
+		ParsedColor parsedColor = cachedColors[c];
+		GdkColor* fc = &parsedColor.gdk_color;
+
+		cairo_t* context = gdk_cairo_create(drawable);
+		if (1 < points.size())
+		{
+			cairo_move_to(context, points[0].x, points[0].y);
+		}
+		for (int i = 1; i < points.size(); ++i)
+		{
+			cairo_line_to(context, points[i].x, points[i].y);
+		}
+		//cairo_clip_preserve(context);
+		cairo_set_source_rgb (context, 0, 0, 0);
+		gdk_cairo_set_source_color(context,&parsedColor.gdk_color);
+		cairo_stroke(context);
+
+		cairo_destroy(context);
+	}
 	virtual void drawPolygon(const std::vector<Shape::Point>& points, Colors::Colorchoice c, bool filled = false)
 	{
-		GdkPoint* gdk_points = new GdkPoint[points.size()];
-		for (unsigned int i = 0; i < points.size(); ++i)
+		bool hq = true;
+		if (hq)
 		{
-			gdk_points[i].x = points[i].x;
-			gdk_points[i].y = points[i].y;
+
+			cairo_t* context = gdk_cairo_create(drawable);
+
+			Rectangle hourRect = getHourAreaRect();
+			// create a gradient 0,
+			cairo_pattern_t* pattern = cairo_pattern_create_linear(0,0,0,_ySize);
+
+			ParsedColor parsedColor = cachedColors[c];
+			GdkColor* fc = &parsedColor.gdk_color;
+
+			double r,g,b;
+			r = fc->red / 65535.;
+			g = fc->green / 65535.;
+			b = fc->blue / 65535.;
+			cairo_pattern_add_color_stop_rgba( pattern, 0.,r,g,b,1.);
+			cairo_pattern_add_color_stop_rgba( pattern, hourRect.y/(double)_ySize,r,g,b,0.4);
+			cairo_pattern_add_color_stop_rgba( pattern, 1., r,g,b,.2);
+
+			cairo_set_line_join(context,CAIRO_LINE_JOIN_ROUND);
+			for (unsigned int i = 0; i < points.size(); ++i)
+			{
+				cairo_line_to(context, points[i].x, points[i].y);
+			}
+			cairo_close_path(context);
+			cairo_clip_preserve(context);
+			cairo_set_source(context, pattern);
+
+			if (filled)
+				cairo_fill(context);
+
+			cairo_destroy(context);
 		}
-		ParsedColor parsedColor = cachedColors[c];
-		gdk_gc_set_rgb_fg_color(gc,&parsedColor.gdk_color);
-		gdk_draw_polygon(drawable, gc, FALSE, gdk_points, points.size());
-		if (filled)
-			gdk_draw_polygon(drawable, gc, TRUE, gdk_points, points.size());
-		delete [] gdk_points;
+		else
+		{
+			ParsedColor parsedColor = cachedColors[c];
+			GdkColor* fc = &parsedColor.gdk_color;
+
+			gdk_gc_set_rgb_fg_color(gc,&parsedColor.gdk_color);
+
+			GdkPoint* gdk_points = new GdkPoint[points.size()];
+			for (unsigned int i = 0; i < points.size(); ++i)
+			{
+				gdk_points[i].x = points[i].x;
+				gdk_points[i].y = points[i].y;
+			}
+
+			gdk_draw_polygon(drawable, gc, FALSE, gdk_points, points.size());
+			if (filled)
+				gdk_draw_polygon(drawable, gc, TRUE, gdk_points, points.size());
+
+			delete [] gdk_points;
+		}
 	}
 
 	void processUpdates()
@@ -738,7 +802,9 @@ gtkGraph::gtkGraph (GdkDrawable* drawable, PangoContext* context,
 	}
 
 	if (NULL != drawable)
+	{
 		gc = gdk_gc_new(drawable);
+	}
 }
 
 
@@ -750,6 +816,7 @@ gtkGraph::~gtkGraph()
 		g_object_unref(pango_layout);
 		pango_layout = NULL;
 	}
+
 	g_object_unref(gc);
 }
 
@@ -1367,6 +1434,7 @@ GtkTideWindowImpl::GtkTideWindowImpl() :
 	Global::initCodeset();
 	Global::settings["tf"].s = "%T %Z";
 	Global::settings["hf"].s = "%H";
+	Global::settings["fb"].c = 'y';
 
 	for (unsigned int i = 0; i < Colors::numColors; ++i)
 	{
